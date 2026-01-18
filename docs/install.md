@@ -22,7 +22,7 @@ Or use the helper script:
 One-shot bootstrap (installs deps, clones repo, runs install):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/TheErasedChild/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
 ```
 
 This installs:

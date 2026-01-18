@@ -71,7 +71,7 @@ This script attempts to:
 It detects your distro (Arch, Ubuntu/Debian, Fedora) and runs the appropriate package manager commands. If dependency install fails, you can rerun the script after installing packages manually.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TheErasedChild/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
 ```
 
 **Notes**

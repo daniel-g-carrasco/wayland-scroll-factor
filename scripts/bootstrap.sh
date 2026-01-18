@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/TheErasedChild/wayland-scroll-factor.git"
+REPO_URL="https://github.com/daniel-g-carrasco/wayland-scroll-factor.git"
 DEST="${DEST:-$HOME/wayland-scroll-factor}"
 
 install_deps() {

@@ -13,7 +13,7 @@
     </p>
   </description>
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
-  <url type="homepage">https://github.com/TheErasedChild/wayland-scroll-factor</url>
+  <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
     <release version="0.2.0" date="2026-01-18">
       <description>
@@ -23,7 +23,7 @@
   </releases>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/TheErasedChild/wayland-scroll-factor/main/docs/screenshots/gui.png</image>
+      <image>https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/main/docs/screenshots/gui.png</image>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>

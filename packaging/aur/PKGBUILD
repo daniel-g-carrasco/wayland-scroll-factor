@@ -5,7 +5,7 @@ pkgver=0.0.0
 pkgrel=1
 pkgdesc='Touchpad scroll and pinch tuning for Wayland (GNOME)'
 arch=('x86_64')
-url='https://github.com/TheErasedChild/wayland-scroll-factor'
+url='https://github.com/daniel-g-carrasco/wayland-scroll-factor'
 license=('MIT')
 depends=('gtk4' 'libadwaita' 'python' 'python-gobject')
 makedepends=('git' 'meson' 'ninja' 'pkgconf' 'gcc')
@@ -13,7 +13,7 @@ optdepends=('libinput-tools: for wsf doctor diagnostics')
 provides=('wayland-scroll-factor')
 conflicts=('wayland-scroll-factor')
 install=wayland-scroll-factor.install
-source=('git+https://github.com/TheErasedChild/wayland-scroll-factor.git')
+source=('git+https://github.com/daniel-g-carrasco/wayland-scroll-factor.git')
 sha256sums=('SKIP')
 
 pkgver() {
