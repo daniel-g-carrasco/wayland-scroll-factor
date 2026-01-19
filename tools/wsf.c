@@ -330,6 +330,8 @@ static int wsf_cmd_enable(void) {
 	if (existing != NULL && existing[0] != '\0') {
 		fprintf(stderr,
 			"Warning: LD_PRELOAD already set; environment.d will override it.\n"
+			"Hint: combine manually, e.g. LD_PRELOAD=%s:$LD_PRELOAD\n",
+			lib_path
 		);
 	}
 

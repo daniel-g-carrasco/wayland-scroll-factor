@@ -33,7 +33,7 @@ Example:
 ```
 printf 'WSF_DEBUG=1\n' >> ~/.config/environment.d/wayland-scroll-factor.conf
 # log out / log back in
-journalctl --user -b | grep "wsf:"
+journalctl --user -b -g "wsf:"
 ```
 
 If `libinput --version` is missing, install `libinput-tools` on Arch for

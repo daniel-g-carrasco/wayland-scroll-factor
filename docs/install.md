@@ -50,6 +50,8 @@ This installs system-wide under `/usr`.
 ./build/tools/wsf enable
 ```
 
+(If installed, you can also run `~/.local/bin/wsf` instead of `./build/tools/wsf`.)
+
 Then log out and log back in (or reboot).
 
 ## Config file

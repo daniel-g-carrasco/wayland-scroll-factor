@@ -17,6 +17,8 @@ FACTOR_MIN = 0.05
 FACTOR_MAX = 5.0
 DEFAULT_FACTOR = 1.0
 DEBOUNCE_MS = 350
+APPLY_TOAST_THROTTLE_MS = 1200
+STATUS_TOAST_THROTTLE_MS = 3000
 
 CLI_MAP = {
     "scroll_vertical": "--scroll-vertical",
@@ -39,6 +41,8 @@ class WsfWindow(Adw.ApplicationWindow):
 
         self._toast_overlay = Adw.ToastOverlay()
         self.set_content(self._toast_overlay)
+        self._last_apply_toast_at = 0
+        self._last_status_toast_at = 0
 
         toolbar_view = Adw.ToolbarView()
         self._toast_overlay.set_child(toolbar_view)
@@ -282,7 +286,7 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_toast("Applied. Log out and back in to take effect.")
+            self._show_apply_toast("Applied. Log out and back in to take effect.")
             return
         self._show_toast(result.stderr.strip() or "Failed to apply settings.")
 
@@ -295,7 +299,7 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_toast("Applied. Log out and back in to take effect.")
+            self._show_apply_toast("Applied. Log out and back in to take effect.")
             return
         self._show_toast(result.stderr.strip() or "Failed to change status.")
 
@@ -370,14 +374,32 @@ class WsfWindow(Adw.ApplicationWindow):
     def _refresh_status(self):
         result = self._run_wsf(["status", "--json"])
         if not result or result.returncode != 0:
+            self._show_status_error_toast("Unable to read status from wsf.")
             return
         try:
             data = json.loads(result.stdout)
         except json.JSONDecodeError:
+            self._show_status_error_toast("Invalid status response from wsf.")
             return
         self._loading = True
         self._enable_switch.set_active(bool(data.get("enabled", False)))
         self._loading = False
+
+    def _show_apply_toast(self, message):
+        now_ms = GLib.get_monotonic_time() // 1000
+        if now_ms - self._last_apply_toast_at < APPLY_TOAST_THROTTLE_MS:
+            return
+        self._last_apply_toast_at = now_ms
+        self._show_toast(message)
+
+    def _show_status_error_toast(self, message):
+        if self._loading:
+            return
+        now_ms = GLib.get_monotonic_time() // 1000
+        if now_ms - self._last_status_toast_at < STATUS_TOAST_THROTTLE_MS:
+            return
+        self._last_status_toast_at = now_ms
+        self._show_toast(message)
 
     def _show_toast(self, message):
         self._toast_overlay.add_toast(Adw.Toast.new(message))

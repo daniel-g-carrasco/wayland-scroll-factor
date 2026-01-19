@@ -8,7 +8,7 @@ install_deps() {
   if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
     sudo apt-get install -y build-essential meson ninja-build pkg-config git \
-      python3 python3-gi libgtk-4-1 libadwaita-1-0 libinput-tools
+      python3 python3-gi gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 libinput-tools
     return 0
   fi
 

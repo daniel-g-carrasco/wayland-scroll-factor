@@ -17,7 +17,7 @@ fi
 if [ ! -f "$BUILD_DIR/build.ninja" ]; then
   meson setup "$BUILD_DIR" "$ROOT" --prefix="$PREFIX"
 else
-  meson setup --reconfigure "$BUILD_DIR" "$ROOT" --prefix="$PREFIX"
+  meson setup --reconfigure "$BUILD_DIR" "$ROOT" --prefix="$PREFIX" --buildtype=release
 fi
 
 ninja -C "$BUILD_DIR"
