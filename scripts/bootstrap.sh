@@ -14,7 +14,7 @@ install_deps() {
 
   if command -v dnf >/dev/null 2>&1; then
     sudo dnf install -y gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git \
-      python3 python3-gobject gtk4 libadwaita libinput-tools
+      python3 python3-gobject gtk4 libadwaita libinput-utils
     return 0
   fi
 
