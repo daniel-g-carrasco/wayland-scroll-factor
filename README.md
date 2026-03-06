@@ -12,6 +12,8 @@
   <i>Status: testing</i>
 </p>
 
+Release notes: [`CHANGELOG.md`](CHANGELOG.md)
+
 ---
 
 ## What is WSF?
