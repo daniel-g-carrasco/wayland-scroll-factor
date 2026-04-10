@@ -15,6 +15,17 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="0.2.2" date="2026-04-10">
+      <description>
+        <p>Testing patch release focused on runtime activation and compatibility.</p>
+        <ul>
+          <li>runtime: factor changes now reload live inside GNOME Shell without logout once WSF is already active</li>
+          <li>runtime: WSF removes its own preload entry from child processes to reduce inherited-preload issues with snap apps</li>
+          <li>doctor/status: added systemd user manager and GNOME Shell activation diagnostics</li>
+          <li>enable/disable: now try systemctl --user daemon-reexec automatically</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-03-06">
       <description>
         <p>Testing patch release with installer compatibility fixes.</p>

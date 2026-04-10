@@ -54,6 +54,10 @@ This installs system-wide under `/usr`.
 
 Then log out and log back in (or reboot).
 
+Notes:
+- `wsf enable` tries `systemctl --user daemon-reexec` automatically so the user manager reloads `~/.config/environment.d`.
+- Once WSF is active in `gnome-shell`, later `wsf set ...` changes should apply live without another logout.
+
 ## Config file
 
 Path: `~/.config/wayland-scroll-factor/config`
@@ -94,6 +98,8 @@ WSF_DEBUG=1
 
 Then log out and log back in (or reboot).
 
+`wsf disable` also tries `systemctl --user daemon-reexec` automatically.
+
 ## Uninstall
 
 ```
@@ -118,3 +124,6 @@ sudo pacman -R wayland-scroll-factor-git
 This project is a per-user workaround until upstream GNOME provides a scroll
 speed control. It avoids `/etc/ld.so.preload` and does not modify system-wide
 configuration.
+
+WSF also strips its own `LD_PRELOAD` entry from child processes after load to
+reduce inherited-preload issues with sandboxed apps such as snaps.

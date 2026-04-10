@@ -59,7 +59,8 @@ WSF ships two components:
 - **Narrow scope**: focuses on scroll + pinch sensitivity to reduce breakage across updates.
 - **Diagnostics first**: `wsf doctor` reports symbol availability, active factors, and environment status.
 
-> Enabling/disabling requires **logout/login** (or session restart) because environment changes must be picked up by GNOME Shell.
+> Factor changes now reload live inside an already-active `gnome-shell`.  
+> Enabling/disabling still requires **logout/login** because the preload itself must be picked up by GNOME Shell.
 
 ---
 
@@ -131,7 +132,7 @@ meson install -C build
 ### Common commands
 
 - `wsf get` (or `wsf get --json`)
-- `wsf set <factor>` (and/or per‑key factors if supported)
+- `wsf set <factor>` (and/or per‑key factors if supported, applied live once WSF is active in GNOME Shell)
 - `wsf enable` / `wsf disable` (**logout/login required**)
 - `wsf status`
 - `wsf doctor`
@@ -222,6 +223,11 @@ This installs system‑wide under `/usr`. For custom library locations, set `WSF
 - **Ubuntu 24.04 LTS** — CLI + GUI compatible
 - **Fedora (recent)** — CLI + GUI compatible
 
+### Notes
+
+- `wsf enable` / `wsf disable` now try `systemctl --user daemon-reexec` automatically to help `environment.d` changes get picked up on distros where plain logout/login is not enough.
+- WSF strips its own `LD_PRELOAD` entry from child processes after load, reducing inherited-preload issues with sandboxed apps such as snaps.
+
 ### CLI only (GUI too old)
 
 - Ubuntu 22.04 LTS
@@ -231,7 +237,8 @@ This installs system‑wide under `/usr`. For custom library locations, set `WSF
 
 ## Limitations
 
-- Environment changes typically require **logout/login** to affect GNOME Shell.
+- Environment changes still require **logout/login** to affect GNOME Shell.
+- On a few distros/session setups, one reboot may still be needed after first enable if the user manager does not pick up `environment.d` changes across a normal relogin.
 - WSF intentionally adjusts only a small subset of gesture feel controls.
 - Support is focused on GNOME first; broader compositor support is planned.
 
