@@ -107,7 +107,7 @@ class WsfWindow(Adw.ApplicationWindow):
         content.append(self._system_group)
 
         enabled_row = Adw.ActionRow(title="Enabled")
-        enabled_row.set_subtitle("Applies on next login")
+        enabled_row.set_subtitle("Enable/disable applies after next login")
         self._enable_switch = Gtk.Switch()
         self._enable_switch.set_valign(Gtk.Align.CENTER)
         enabled_row.add_suffix(self._enable_switch)
@@ -286,7 +286,7 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_apply_toast("Applied. Log out and back in to take effect.")
+            self._show_apply_toast("Applied. GNOME Shell should pick up factor changes automatically.")
             return
         self._show_toast(result.stderr.strip() or "Failed to apply settings.")
 
@@ -299,7 +299,7 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_apply_toast("Applied. Log out and back in to take effect.")
+            self._show_apply_toast("Applied. Log out and back in to change activation state.")
             return
         self._show_toast(result.stderr.strip() or "Failed to change status.")
 
