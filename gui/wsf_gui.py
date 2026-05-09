@@ -38,6 +38,7 @@ class WsfWindow(Adw.ApplicationWindow):
         self._debounce_ids = {}
         self._loading = True
         self._last_doctor_output = ""
+        self._hyprland_running = False
 
         self._toast_overlay = Adw.ToastOverlay()
         self.set_content(self._toast_overlay)
@@ -108,6 +109,7 @@ class WsfWindow(Adw.ApplicationWindow):
 
         enabled_row = Adw.ActionRow(title="Enabled")
         enabled_row.set_subtitle("Enable/disable applies after next login")
+        self._enabled_row = enabled_row
         self._enable_switch = Gtk.Switch()
         self._enable_switch.set_valign(Gtk.Align.CENTER)
         enabled_row.add_suffix(self._enable_switch)
@@ -286,7 +288,14 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_apply_toast("Applied. GNOME Shell should pick up factor changes automatically.")
+            if self._hyprland_running and key in {"scroll_vertical", "scroll_horizontal"}:
+                self._loading = True
+                self._set_slider_value("scroll_vertical", value)
+                self._set_slider_value("scroll_horizontal", value)
+                self._loading = False
+                self._show_apply_toast("Applied live via Hyprland native scroll factor.")
+            else:
+                self._show_apply_toast("Applied. Active preload sessions should pick up factor changes automatically.")
             return
         self._show_toast(result.stderr.strip() or "Failed to apply settings.")
 
@@ -356,7 +365,7 @@ class WsfWindow(Adw.ApplicationWindow):
         self._refresh_status()
 
     def _refresh_factors(self):
-        result = self._run_wsf(["get", "--json"])
+        result = self._run_wsf(["status", "--json"])
         if not result or result.returncode != 0:
             return
         try:
@@ -364,11 +373,22 @@ class WsfWindow(Adw.ApplicationWindow):
         except json.JSONDecodeError:
             return
 
+        factors = data.get("factors", data)
+        hyprland = data.get("hyprland", {})
+        hyprland_scroll = hyprland.get("touchpad_scroll_factor")
+        self._hyprland_running = bool(hyprland.get("running", False))
+        if self._hyprland_running and hyprland_scroll is not None:
+            scroll_vertical = hyprland_scroll
+            scroll_horizontal = hyprland_scroll
+        else:
+            scroll_vertical = factors.get("scroll_vertical_factor", DEFAULT_FACTOR)
+            scroll_horizontal = factors.get("scroll_horizontal_factor", DEFAULT_FACTOR)
+
         self._loading = True
-        self._set_slider_value("scroll_vertical", data.get("scroll_vertical_factor", DEFAULT_FACTOR))
-        self._set_slider_value("scroll_horizontal", data.get("scroll_horizontal_factor", DEFAULT_FACTOR))
-        self._set_slider_value("pinch_zoom", data.get("pinch_zoom_factor", DEFAULT_FACTOR))
-        self._set_slider_value("pinch_rotate", data.get("pinch_rotate_factor", DEFAULT_FACTOR))
+        self._set_slider_value("scroll_vertical", scroll_vertical)
+        self._set_slider_value("scroll_horizontal", scroll_horizontal)
+        self._set_slider_value("pinch_zoom", factors.get("pinch_zoom_factor", DEFAULT_FACTOR))
+        self._set_slider_value("pinch_rotate", factors.get("pinch_rotate_factor", DEFAULT_FACTOR))
         self._loading = False
 
     def _refresh_status(self):
@@ -381,8 +401,14 @@ class WsfWindow(Adw.ApplicationWindow):
         except json.JSONDecodeError:
             self._show_status_error_toast("Invalid status response from wsf.")
             return
+        hyprland = data.get("hyprland", {})
+        self._hyprland_running = bool(hyprland.get("running", False))
         self._loading = True
         self._enable_switch.set_active(bool(data.get("enabled", False)))
+        if self._hyprland_running:
+            self._enabled_row.set_subtitle("GNOME preload toggle; Hyprland scroll applies live")
+        else:
+            self._enabled_row.set_subtitle("Enable/disable applies after next login")
         self._loading = False
 
     def _show_apply_toast(self, message):

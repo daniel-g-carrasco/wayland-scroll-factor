@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>Tune touchpad gesture feel on Wayland</b><br>
-  Predictable two‑finger scrolling (vertical + horizontal) and pinch zoom/rotate sensitivity on modern Linux desktops — starting with GNOME on Wayland.<br>
+  Predictable two‑finger scrolling (vertical + horizontal) and pinch zoom/rotate sensitivity on modern Linux desktops — GNOME first, with experimental Hyprland scroll support.<br>
   <i>Status: testing</i>
 </p>
 
@@ -24,7 +24,7 @@ Release notes: [`CHANGELOG.md`](CHANGELOG.md)
 - **Pinch‑to‑zoom** sensitivity
 - **Pinch rotate** sensitivity
 
-WSF is intentionally narrow in scope and designed to be **safe, reversible, and practical** on modern GNOME Wayland setups (tested primarily on Arch + GNOME).
+WSF is intentionally narrow in scope and designed to be **safe, reversible, and practical** on modern Wayland setups (tested primarily on Arch + GNOME, with experimental Hyprland scroll support).
 
 ---
 
@@ -51,10 +51,13 @@ WSF ships two components:
 2) **User‑level preload library (`libwsf_preload.so`)**  
    Interposes a small set of libinput functions used for scrolling and gestures and applies configurable scaling factors.
 
+3) **Native compositor backends where available**
+   Hyprland scroll tuning uses `hyprctl keyword input:touchpad:scroll_factor ...` instead of patching Hyprland.
+
 ### Safety design choices
 
 - **Per‑user only**: avoids `/etc/ld.so.preload`. Config is under `~/.config`.
-- **Process guard rail**: the preload library is a no‑op unless the process is `gnome-shell` (so unrelated apps are not affected).
+- **Process guard rail**: the preload library is a no‑op unless the process is `gnome-shell` (so unrelated apps are not affected). Hyprland scroll support uses the native `hyprctl` backend instead.
 - **Touchpad‑only scroll scaling**: scroll scaling is applied only to finger/continuous sources, preserving mouse wheel behavior.
 - **Narrow scope**: focuses on scroll + pinch sensitivity to reduce breakage across updates.
 - **Diagnostics first**: `wsf doctor` reports symbol availability, active factors, and environment status.
@@ -98,6 +101,12 @@ Enable for your session (**logout/login required**):
 wsf enable
 ```
 
+On Hyprland, supported scroll changes apply live through the native backend:
+
+```bash
+wsf apply
+```
+
 Run diagnostics:
 
 ```bash
@@ -132,7 +141,8 @@ meson install -C build
 ### Common commands
 
 - `wsf get` (or `wsf get --json`)
-- `wsf set <factor>` (and/or per‑key factors if supported, applied live once WSF is active in GNOME Shell)
+- `wsf set <factor>` (and/or per‑key factors; applies live on supported active backends)
+- `wsf apply` (apply supported live compositor backends, currently Hyprland scroll)
 - `wsf enable` / `wsf disable` (**logout/login required**)
 - `wsf status`
 - `wsf doctor`
@@ -216,10 +226,12 @@ This installs system‑wide under `/usr`. For custom library locations, set `WSF
 
 - **Core (preload/CLI)** requires **libinput ≥ 1.19**
 - **GUI** requires **libadwaita ≥ 1.4** (`Adw.ToolbarView` introduced in 1.4)
+- **Hyprland backend** requires `hyprctl` and a running Hyprland session
 
 ### Known working
 
 - **Arch Linux (rolling)** + GNOME (Wayland) — primary test target
+- **Arch Linux (rolling)** + Hyprland — experimental native scroll backend
 - **Ubuntu 24.04 LTS** — CLI + GUI compatible
 - **Fedora (recent)** — CLI + GUI compatible
 
@@ -227,6 +239,7 @@ This installs system‑wide under `/usr`. For custom library locations, set `WSF
 
 - `wsf enable` / `wsf disable` now try `systemctl --user daemon-reexec` automatically to help `environment.d` changes get picked up on distros where plain logout/login is not enough.
 - WSF strips its own `LD_PRELOAD` entry from child processes after load, reducing inherited-preload issues with sandboxed apps such as snaps.
+- Hyprland exposes one native touchpad scroll factor, so WSF maps vertical and horizontal scroll controls to the same runtime setting there.
 
 ### CLI only (GUI too old)
 
@@ -238,9 +251,12 @@ This installs system‑wide under `/usr`. For custom library locations, set `WSF
 ## Limitations
 
 - Environment changes still require **logout/login** to affect GNOME Shell.
+- Hyprland scroll changes apply live, but persistence across Hyprland restarts requires running `wsf apply` at session startup.
 - On a few distros/session setups, one reboot may still be needed after first enable if the user manager does not pick up `environment.d` changes across a normal relogin.
 - WSF intentionally adjusts only a small subset of gesture feel controls.
-- Support is focused on GNOME first; broader compositor support is planned.
+- Pinch zoom/rotate scaling remains GNOME/preload-focused; Hyprland does not currently expose a native general-purpose pinch sensitivity setting for clients.
+
+See [`docs/hyprland.md`](docs/hyprland.md) for the Hyprland audit and setup notes.
 
 ---
 

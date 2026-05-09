@@ -39,6 +39,23 @@
   libinput behaviors.
 - Built-in diagnostics (`wsf doctor`) to verify symbols and environment state.
 
+## Hyprland backend design
+
+- Objective: support Hyprland touchpad scroll tuning without patching Hyprland.
+- Mechanism: prefer Hyprland's native runtime setting
+  `input:touchpad:scroll_factor` via `hyprctl`.
+- Scope: scroll only for now. Hyprland exposes one native touchpad scroll factor,
+  so WSF maps both vertical and horizontal scroll controls to that single value.
+- Pinch zoom/rotate: not implemented for Hyprland natively because current
+  Hyprland configuration does not expose a general client pinch sensitivity
+  control.
+- Preload safety: WSF does not activate preload hooks inside Hyprland by
+  default, avoiding double scaling between native Hyprland scroll handling and
+  libinput interposition.
+- Persistence: `wsf set` applies live on a running Hyprland session; users can
+  add `exec-once = wsf apply` to Hyprland startup config to reapply saved WSF
+  config on session start.
+
 ## MVP design (GNOME Wayland)
 
 - Objective: per-user control of two-finger scroll speed on GNOME Wayland.

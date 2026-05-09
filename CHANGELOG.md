@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [Unreleased]
+
+### Added
+- Experimental Hyprland native scroll backend using `hyprctl keyword input:touchpad:scroll_factor`.
+- New `wsf apply` command to reapply saved settings to supported live compositor backends.
+- `wsf status` and `wsf doctor` now report Hyprland backend availability and the live touchpad scroll factor.
+- Hyprland backend documentation and troubleshooting notes.
+
+### Changed
+- The GUI reads the live Hyprland touchpad scroll factor when running under Hyprland and keeps vertical/horizontal scroll sliders synchronized there, matching Hyprland's single native scroll factor.
+
 ## [0.2.2] - 2026-04-10
 
 ### Fixed

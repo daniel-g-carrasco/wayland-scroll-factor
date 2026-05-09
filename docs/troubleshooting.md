@@ -28,6 +28,15 @@
 - If using a custom library location, set `WSF_LIB_PATH` before enabling.
 - If a snap app fails to launch, update to a recent WSF version and rerun `wsf doctor`. Current builds remove WSF from child `LD_PRELOAD` after load to avoid inherited-preload problems.
 
+## Hyprland
+
+- Run `wsf status` and confirm it reports `hyprland: running`.
+- Run `hyprctl getoption input:touchpad:scroll_factor` to inspect the live compositor value.
+- Run `wsf set 0.35` or `wsf apply`; both should update the live Hyprland scroll factor without logout.
+- If vertical and horizontal factors differ, remember Hyprland currently has one native touchpad scroll factor for both axes.
+- If the value changes but does not persist after restarting Hyprland, add `exec-once = wsf apply` to your Hyprland startup config.
+- Pinch zoom/rotate tuning is not available through the native Hyprland backend yet.
+
 ## Debug mode
 
 Set `WSF_DEBUG=1` before logging in to see a one-time init log from the

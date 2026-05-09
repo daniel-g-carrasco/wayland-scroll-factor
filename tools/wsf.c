@@ -14,7 +14,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+static bool wsf_run_command(const char *cmd, char *buf, size_t len);
 static bool wsf_run_command_ok(const char *cmd);
+
+#define WSF_HYPRLAND_SCROLL_FACTOR_MAX 2.0
 
 struct wsf_runtime_state {
 	bool user_manager_ld_preload_present;
@@ -26,6 +29,15 @@ struct wsf_runtime_state {
 	pid_t gnome_shell_pid;
 	char user_manager_ld_preload[512];
 	char gnome_shell_ld_preload[512];
+};
+
+struct wsf_hyprland_state {
+	bool session_hint;
+	bool hyprctl_found;
+	bool running;
+	bool touchpad_scroll_found;
+	double touchpad_scroll_factor;
+	char version[256];
 };
 
 static void wsf_runtime_state_collect(
@@ -195,6 +207,135 @@ static bool wsf_ensure_env_dir(void) {
 	return true;
 }
 
+static bool wsf_string_contains(const char *haystack, const char *needle) {
+	return haystack != NULL && needle != NULL && strstr(haystack, needle) != NULL;
+}
+
+static bool wsf_hyprland_session_hint(void) {
+	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+	const char *current_desktop = getenv("XDG_SESSION_DESKTOP");
+	const char *signature = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+	if (signature != NULL && signature[0] != '\0') {
+		return true;
+	}
+
+	return wsf_string_contains(desktop, "Hyprland") ||
+		wsf_string_contains(current_desktop, "Hyprland");
+}
+
+static bool wsf_hyprland_get_touchpad_scroll_factor(double *out_factor) {
+	char raw[64];
+	char *end = NULL;
+	double value = 0.0;
+
+	if (out_factor == NULL) {
+		return false;
+	}
+
+	if (!wsf_run_command(
+		"hyprctl getoption input:touchpad:scroll_factor 2>/dev/null | awk '/float:/ {print $2; exit}'",
+		raw,
+		sizeof(raw))) {
+		return false;
+	}
+
+	errno = 0;
+	value = strtod(raw, &end);
+	if (raw == end || errno == ERANGE) {
+		return false;
+	}
+
+	*out_factor = value;
+	return true;
+}
+
+static void wsf_hyprland_state_collect(struct wsf_hyprland_state *state) {
+	if (state == NULL) {
+		return;
+	}
+
+	memset(state, 0, sizeof(*state));
+	state->session_hint = wsf_hyprland_session_hint();
+	state->hyprctl_found = wsf_run_command_ok("command -v hyprctl >/dev/null 2>&1");
+	state->running = wsf_run_command(
+		"hyprctl version 2>/dev/null",
+		state->version,
+		sizeof(state->version)
+	);
+	if (state->running) {
+		state->touchpad_scroll_found = wsf_hyprland_get_touchpad_scroll_factor(
+			&state->touchpad_scroll_factor
+		);
+	}
+}
+
+static double wsf_hyprland_clamp_scroll_factor(double factor, bool *clamped) {
+	if (clamped != NULL) {
+		*clamped = false;
+	}
+
+	if (factor > WSF_HYPRLAND_SCROLL_FACTOR_MAX) {
+		if (clamped != NULL) {
+			*clamped = true;
+		}
+		return WSF_HYPRLAND_SCROLL_FACTOR_MAX;
+	}
+
+	return factor;
+}
+
+static int wsf_hyprland_apply_touchpad_scroll(double factor, bool verbose) {
+	struct wsf_hyprland_state state;
+	char cmd[256];
+	double applied_factor = 0.0;
+	bool clamped = false;
+
+	wsf_hyprland_state_collect(&state);
+	if (!state.running) {
+		if (verbose && (state.session_hint || state.hyprctl_found)) {
+			fprintf(stderr, "hyprland native backend unavailable: hyprctl is not connected to a running Hyprland session.\n");
+		}
+		return 0;
+	}
+
+	applied_factor = wsf_hyprland_clamp_scroll_factor(factor, &clamped);
+	if (snprintf(
+		cmd,
+		sizeof(cmd),
+		"hyprctl keyword input:touchpad:scroll_factor %.4f >/dev/null 2>&1",
+		applied_factor
+	) >= (int) sizeof(cmd)) {
+		if (verbose) {
+			fprintf(stderr, "failed to build hyprctl command.\n");
+		}
+		return -1;
+	}
+
+	if (!wsf_run_command_ok(cmd)) {
+		if (verbose) {
+			fprintf(stderr, "failed to apply Hyprland input:touchpad:scroll_factor via hyprctl.\n");
+		}
+		return -1;
+	}
+
+	if (verbose) {
+		printf(
+			"hyprland native scroll applied: input:touchpad:scroll_factor=%.4f\n",
+			applied_factor
+		);
+		if (clamped) {
+			printf(
+				"hyprland note: requested %.4f, clamped to %.4f (Hyprland native range).\n",
+				factor,
+				WSF_HYPRLAND_SCROLL_FACTOR_MAX
+			);
+		}
+	}
+
+	return 1;
+}
+
 static void wsf_print_usage(const char *prog) {
 	fprintf(stderr, "Usage: %s <command> [args]\n", prog);
 	fprintf(stderr, "Commands:\n");
@@ -209,6 +350,7 @@ static void wsf_print_usage(const char *prog) {
 	fprintf(stderr, "    --pinch-rotate <factor>\n");
 	fprintf(stderr, "    --factor <factor>\n");
 	fprintf(stderr, "  get [--json]   Print effective factors\n");
+	fprintf(stderr, "  apply          Apply supported live compositor backends\n");
 	fprintf(stderr, "  enable         Enable preload via environment.d\n");
 	fprintf(stderr, "  disable        Disable preload via environment.d\n");
 	fprintf(stderr, "  status [--json] Show current status\n");
@@ -252,7 +394,9 @@ static bool wsf_parse_factor_arg(const char *arg, double *out_factor) {
 static int wsf_cmd_set(int argc, char **argv) {
 	struct wsf_config_values updates;
 	bool has_updates = false;
+	bool has_live_scroll_factor = false;
 	bool debug = wsf_debug_enabled();
+	double live_scroll_factor = WSF_FACTOR_DEFAULT;
 	int i = 0;
 
 	wsf_config_values_init(&updates);
@@ -267,6 +411,8 @@ static int wsf_cmd_set(int argc, char **argv) {
 		updates.factor = factor;
 		updates.has_factor = true;
 		has_updates = true;
+		has_live_scroll_factor = true;
+		live_scroll_factor = factor;
 	} else {
 		for (i = 2; i < argc; i++) {
 			const char *arg = argv[i];
@@ -280,6 +426,8 @@ static int wsf_cmd_set(int argc, char **argv) {
 				updates.scroll_vertical_factor = factor;
 				updates.has_scroll_vertical = true;
 				has_updates = true;
+				has_live_scroll_factor = true;
+				live_scroll_factor = factor;
 				i++;
 				continue;
 			}
@@ -291,6 +439,8 @@ static int wsf_cmd_set(int argc, char **argv) {
 				updates.scroll_horizontal_factor = factor;
 				updates.has_scroll_horizontal = true;
 				has_updates = true;
+				has_live_scroll_factor = true;
+				live_scroll_factor = factor;
 				i++;
 				continue;
 			}
@@ -324,6 +474,8 @@ static int wsf_cmd_set(int argc, char **argv) {
 				updates.factor = factor;
 				updates.has_factor = true;
 				has_updates = true;
+				has_live_scroll_factor = true;
+				live_scroll_factor = factor;
 				i++;
 				continue;
 			}
@@ -344,6 +496,63 @@ static int wsf_cmd_set(int argc, char **argv) {
 	}
 
 	printf("config updated\n");
+	if (has_live_scroll_factor) {
+		(void) wsf_hyprland_apply_touchpad_scroll(live_scroll_factor, true);
+	}
+	return 0;
+}
+
+static bool wsf_factor_differs(double a, double b) {
+	double diff = a - b;
+
+	if (diff < 0.0) {
+		diff = -diff;
+	}
+
+	return diff > 0.0001;
+}
+
+static bool wsf_scroll_env_override_present(void) {
+	const char *factor = getenv("WSF_FACTOR");
+	const char *vertical = getenv("WSF_SCROLL_VERTICAL_FACTOR");
+	const char *horizontal = getenv("WSF_SCROLL_HORIZONTAL_FACTOR");
+
+	return (factor != NULL && factor[0] != '\0') ||
+		(vertical != NULL && vertical[0] != '\0') ||
+		(horizontal != NULL && horizontal[0] != '\0');
+}
+
+static int wsf_cmd_apply(void) {
+	struct wsf_effective_factors factors;
+	int status = wsf_effective_factors(&factors, false);
+	int applied = 0;
+
+	if (status == WSF_CONFIG_ERROR) {
+		fprintf(stderr, "Failed to read config.\n");
+		return 1;
+	}
+	if (status == WSF_CONFIG_MISSING && !wsf_scroll_env_override_present()) {
+		printf("no WSF scroll config found; nothing to apply\n");
+		return 0;
+	}
+
+	if (wsf_factor_differs(factors.scroll_vertical, factors.scroll_horizontal)) {
+		printf(
+			"hyprland note: native backend has one touchpad scroll factor; using scroll_vertical_factor=%.4f.\n",
+			factors.scroll_vertical
+		);
+	}
+
+	applied = wsf_hyprland_apply_touchpad_scroll(factors.scroll_vertical, true);
+	if (applied < 0) {
+		return 1;
+	}
+	if (applied > 0) {
+		return 0;
+	}
+
+	printf("no live native compositor backend detected\n");
+	printf("hint: on GNOME, use `wsf enable` and log out/in so the preload can load into gnome-shell.\n");
 	return 0;
 }
 
@@ -516,12 +725,69 @@ static void wsf_print_json_string(const char *value) {
 	printf("\"");
 }
 
+static void wsf_print_hyprland_json_field(
+	const struct wsf_hyprland_state *state
+) {
+	printf("\"hyprland\":{");
+	printf("\"session_hint\":%s,", state->session_hint ? "true" : "false");
+	printf("\"hyprctl_found\":%s,", state->hyprctl_found ? "true" : "false");
+	printf("\"running\":%s,", state->running ? "true" : "false");
+	printf("\"version\":");
+	if (state->running) {
+		wsf_print_json_string(state->version);
+	} else {
+		wsf_print_json_string(NULL);
+	}
+	printf(",");
+	printf("\"touchpad_scroll_factor\":");
+	if (state->touchpad_scroll_found) {
+		printf("%.4f", state->touchpad_scroll_factor);
+	} else {
+		printf("null");
+	}
+	printf(",");
+	printf("\"single_touchpad_scroll_factor\":true");
+	printf("}");
+}
+
+static void wsf_print_hyprland_status(
+	const struct wsf_hyprland_state *state,
+	bool always
+) {
+	if (!always && !state->session_hint && !state->hyprctl_found && !state->running) {
+		return;
+	}
+
+	if (state->running) {
+		printf("hyprland: running (%s)\n", state->version);
+	} else if (state->hyprctl_found) {
+		printf("hyprland: not running (hyprctl found)\n");
+	} else if (state->session_hint) {
+		printf("hyprland: session hinted, but hyprctl not found\n");
+	} else {
+		printf("hyprland: not detected\n");
+	}
+
+	if (state->touchpad_scroll_found) {
+		printf(
+			"hyprland touchpad scroll_factor: %.4f\n",
+			state->touchpad_scroll_factor
+		);
+	}
+
+	if (state->running) {
+		printf("hyprland backend: native scroll apply available (single factor for vertical + horizontal)\n");
+		printf("hyprland backend: pinch zoom/rotate scaling not exposed natively\n");
+	}
+}
+
 static int wsf_cmd_status(bool json) {
 	char env_path[512];
 	char lib_path[512];
 	const char *config_path = wsf_config_path();
 	struct wsf_effective_factors factors;
 	struct wsf_runtime_state runtime;
+	struct wsf_hyprland_state hyprland;
 	int status = wsf_effective_factors(&factors, false);
 	const char *env_factor = getenv("WSF_FACTOR");
 	const char *env_scroll_vertical = getenv("WSF_SCROLL_VERTICAL_FACTOR");
@@ -544,6 +810,7 @@ static int wsf_cmd_status(bool json) {
 	env_present = access(env_path, F_OK) == 0;
 	lib_present = access(lib_path, R_OK) == 0;
 	wsf_runtime_state_collect(&runtime, lib_path);
+	wsf_hyprland_state_collect(&hyprland);
 
 	if (json) {
 		bool config_present = false;
@@ -581,6 +848,8 @@ static int wsf_cmd_status(bool json) {
 		printf(",");
 		printf("\"gnome_shell_preload_matches\":%s,", runtime.gnome_shell_ld_preload_matches ? "true" : "false");
 		printf("\"gnome_shell_library_mapped\":%s,", runtime.gnome_shell_library_mapped ? "true" : "false");
+		wsf_print_hyprland_json_field(&hyprland);
+		printf(",");
 		printf("\"config\":");
 		wsf_print_json_string(config_path);
 		printf(",");
@@ -624,6 +893,7 @@ static int wsf_cmd_status(bool json) {
 			runtime.gnome_shell_library_mapped ? "yes" : "no"
 		);
 	}
+	wsf_print_hyprland_status(&hyprland, false);
 	if (config_path != NULL) {
 		bool config_present = access(config_path, F_OK) == 0;
 		printf(
@@ -654,12 +924,14 @@ static int wsf_cmd_status(bool json) {
 	if (env_pinch_rotate != NULL && env_pinch_rotate[0] != '\0') {
 		printf("WSF_PINCH_ROTATE_FACTOR: %s (env override)\n", env_pinch_rotate);
 	}
-	if (runtime.gnome_shell_library_mapped) {
+	if (hyprland.running) {
+		printf("runtime scroll apply: active via Hyprland native backend\n");
+	} else if (runtime.gnome_shell_library_mapped) {
 		printf("runtime config reload: active (factor changes should apply without logout)\n");
 	} else {
 		printf("runtime config reload: pending (GNOME Shell has not loaded WSF yet)\n");
 	}
-	printf("note: logout/login required after enable/disable\n");
+	printf("note: logout/login required after preload enable/disable\n");
 	if (env_present && !runtime.user_manager_matches) {
 		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
 	}
@@ -1134,6 +1406,7 @@ static int wsf_cmd_doctor(bool json) {
 	bool config_present = false;
 	struct wsf_symbol_status symbols;
 	struct wsf_runtime_state runtime;
+	struct wsf_hyprland_state hyprland;
 
 	if (!wsf_env_file_path(env_path, sizeof(env_path))) {
 		fprintf(stderr, "Failed to resolve environment.d path.\n");
@@ -1153,6 +1426,7 @@ static int wsf_cmd_doctor(bool json) {
 
 	wsf_symbol_status(&symbols);
 	wsf_runtime_state_collect(&runtime, lib_path);
+	wsf_hyprland_state_collect(&hyprland);
 
 	if (json) {
 		printf("{");
@@ -1203,6 +1477,8 @@ static int wsf_cmd_doctor(bool json) {
 		printf(",");
 		printf("\"gnome_shell_preload_matches\":%s,", runtime.gnome_shell_ld_preload_matches ? "true" : "false");
 		printf("\"gnome_shell_library_mapped\":%s,", runtime.gnome_shell_library_mapped ? "true" : "false");
+		wsf_print_hyprland_json_field(&hyprland);
+		printf(",");
 		printf("\"config\":");
 		wsf_print_json_string(config_path);
 		printf(",");
@@ -1294,6 +1570,7 @@ static int wsf_cmd_doctor(bool json) {
 	} else {
 		printf("gnome-shell: not running\n");
 	}
+	wsf_print_hyprland_status(&hyprland, true);
 	if (config_path != NULL) {
 		printf(
 			"config: %s (%s)\n",
@@ -1331,7 +1608,9 @@ static int wsf_cmd_doctor(bool json) {
 	}
 
 	wsf_doctor_symbols_print(&symbols);
-	if (runtime.gnome_shell_library_mapped) {
+	if (hyprland.running) {
+		printf("runtime scroll apply: active via Hyprland native backend\n");
+	} else if (runtime.gnome_shell_library_mapped) {
 		printf("runtime config reload: active (factor changes should apply live)\n");
 	} else {
 		printf("runtime config reload: inactive until GNOME Shell loads WSF\n");
@@ -1348,7 +1627,7 @@ static int wsf_cmd_doctor(bool json) {
 		!runtime.gnome_shell_ld_preload_present) {
 		printf("note: WSF strips itself from child LD_PRELOAD after loading to avoid inherited-preload issues.\n");
 	}
-	printf("note: logout/login required after enable/disable\n");
+	printf("note: logout/login required after preload enable/disable\n");
 	return 0;
 }
 
@@ -1386,6 +1665,13 @@ int main(int argc, char **argv) {
 			}
 		}
 		return wsf_cmd_get(json);
+	}
+	if (strcmp(cmd, "apply") == 0) {
+		if (argc != 2) {
+			fprintf(stderr, "Command apply does not accept arguments.\n");
+			return 1;
+		}
+		return wsf_cmd_apply();
 	}
 	if (strcmp(cmd, "enable") == 0) {
 		return wsf_cmd_enable();
