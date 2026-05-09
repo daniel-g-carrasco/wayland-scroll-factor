@@ -1052,7 +1052,8 @@ static int wsf_cmd_status(bool json) {
 		if (runtime.hyprland_library_mapped) {
 			printf("runtime gesture reload: active via Hyprland gestures-only preload\n");
 		} else {
-			printf("runtime gesture reload: inactive; restart Hyprland with WSF gestures-only preload to test pinch controls\n");
+			printf("runtime gesture reload: inactive; restart Hyprland through wsf-hyprland to use pinch controls\n");
+			printf("hint: use `start-hyprland --path $(command -v wsf-hyprland) -- ...`, or with tuigreet use `--session-wrapper $(command -v wsf-session-wrapper)`.\n");
 		}
 	} else if (runtime.gnome_shell_library_mapped) {
 		printf("runtime config reload: active (GNOME preload rereads factors on handled gestures)\n");
@@ -1838,7 +1839,9 @@ static int wsf_cmd_doctor(bool json) {
 		if (runtime.hyprland_library_mapped) {
 			printf("runtime gesture reload: active via Hyprland gestures-only preload\n");
 		} else {
-			printf("runtime gesture reload: inactive; launch Hyprland with WSF_TARGETS=Hyprland and WSF_HYPRLAND_GESTURES_ONLY=1 to test pinch controls\n");
+			printf("runtime gesture reload: inactive; launch Hyprland through wsf-hyprland to use pinch controls\n");
+			printf("hint: `start-hyprland --path $(command -v wsf-hyprland) -- ...`\n");
+			printf("hint: for tuigreet, `--remember-session` overrides `--cmd`; use `--session-wrapper $(command -v wsf-session-wrapper)` for selected/remembered sessions.\n");
 		}
 	} else if (runtime.gnome_shell_library_mapped) {
 		printf("runtime config reload: active (GNOME preload rereads factors on handled gestures)\n");

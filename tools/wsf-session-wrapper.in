@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+  if [[ "${WSF_SESSION_WRAPPER_DEBUG:-0}" == "1" ]]; then
+    printf 'wsf-session-wrapper: %s\n' "$*" >&2
+  fi
+}
+
+find_wsf_hyprland() {
+  local candidates=()
+  local candidate
+
+  if [[ -n "${WSF_HYPRLAND_SHIM:-}" ]]; then
+    candidates+=("$WSF_HYPRLAND_SHIM")
+  fi
+
+  if command -v wsf-hyprland >/dev/null 2>&1; then
+    candidates+=("$(command -v wsf-hyprland)")
+  fi
+
+  candidates+=(
+    "@WSF_BINDIR@/wsf-hyprland"
+    "${HOME:-}/.local/bin/wsf-hyprland"
+    "/usr/local/bin/wsf-hyprland"
+    "/usr/bin/wsf-hyprland"
+  )
+
+  for candidate in "${candidates[@]}"; do
+    [[ -x "$candidate" ]] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+
+  return 1
+}
+
+has_arg() {
+  local needle="$1"
+  shift
+
+  for arg in "$@"; do
+    [[ "$arg" == "$needle" ]] && return 0
+  done
+
+  return 1
+}
+
+if [[ "$#" -lt 1 ]]; then
+  printf 'wsf-session-wrapper: missing session command\n' >&2
+  exit 64
+fi
+
+cmd="$1"
+shift
+base="$(basename "$cmd")"
+
+case "$base" in
+  Hyprland)
+    if shim="$(find_wsf_hyprland)"; then
+      log "wrapping Hyprland with $shim"
+      exec "$shim" "$@"
+    fi
+    ;;
+  start-hyprland)
+    if shim="$(find_wsf_hyprland)"; then
+      if has_arg "--path" "$@"; then
+        log 'start-hyprland already has --path; leaving command unchanged'
+        exec "$cmd" "$@"
+      fi
+      log "wrapping start-hyprland with --path $shim"
+      exec "$cmd" --path "$shim" "$@"
+    fi
+    ;;
+esac
+
+log "leaving non-Hyprland session unchanged: $cmd $*"
+exec "$cmd" "$@"

@@ -52,7 +52,7 @@ meson install -C build
 
 The installer places files under `~/.local`.
 
-It installs `wsf`, `wsf-gui`, `wsf-hyprland`, and
+It installs `wsf`, `wsf-gui`, `wsf-hyprland`, `wsf-session-wrapper`, and
 `libwsf_preload.so`. It does not automatically modify your login manager.
 
 ---
@@ -147,6 +147,18 @@ WSF does not modify login manager configuration automatically. If you use a
 display manager or a custom session script, point that session command at the
 `start-hyprland --path ...` form above.
 
+For greetd/tuigreet setups that select desktop entries or use
+`--remember-session`, prefer the installed session wrapper:
+
+```bash
+tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+```
+
+`tuigreet --remember-session` overrides `--cmd` after the first remembered
+login, so a plain `--cmd start-hyprland --path ...` may be silently bypassed.
+The wrapper leaves non-Hyprland sessions unchanged and only injects
+`wsf-hyprland` when the selected session is `Hyprland` or `start-hyprland`.
+
 ### Hyprland Persistence
 
 Hyprland runtime settings can be overwritten by static config during reload/login. If WSF should manage scroll speed, remove or comment out any static `touchpad.scroll_factor` / `input:touchpad:scroll_factor` value from your Hyprland config, or keep it intentionally in sync with WSF.
@@ -183,6 +195,7 @@ wsf status --json
 wsf doctor
 wsf doctor --json
 wsf-hyprland
+wsf-session-wrapper
 ```
 
 Config file:
@@ -209,7 +222,7 @@ pinch_rotate_factor=1.00
 wsf disable
 rm -rf ~/.config/wayland-scroll-factor
 rm -f ~/.config/environment.d/wayland-scroll-factor.conf
-rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland
+rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland ~/.local/bin/wsf-session-wrapper
 rm -rf ~/.local/lib/wayland-scroll-factor
 rm -f ~/.local/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
 rm -f ~/.local/share/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml

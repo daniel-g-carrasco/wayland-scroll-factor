@@ -30,6 +30,7 @@ This installs:
 - `~/.local/bin/wsf`
 - `~/.local/bin/wsf-gui`
 - `~/.local/bin/wsf-hyprland`
+- `~/.local/bin/wsf-session-wrapper`
 - `~/.local/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop`
 - icons under `~/.local/share/icons/hicolor/`
 
@@ -129,6 +130,19 @@ The installer provides `wsf-hyprland`, but it does not edit greetd, SDDM, or
 custom session files. Wire the command above into the session launcher used by
 your desktop.
 
+For greetd/tuigreet setups that select sessions from the menu, use the installed
+session wrapper:
+
+```
+tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+```
+
+This is especially important when `tuigreet --remember-session` is enabled:
+tuigreet documents that remembered sessions override `--cmd` on later logins.
+`wsf-session-wrapper` leaves non-Hyprland sessions unchanged and injects
+`wsf-hyprland` only when the selected command is `Hyprland` or
+`start-hyprland`.
+
 For Hyprland-based OS images, install WSF with the desktop package set and add:
 
 ```
@@ -160,7 +174,7 @@ Then remove user config if needed:
 rm -f ~/.config/environment.d/wayland-scroll-factor.conf
 rm -rf ~/.config/wayland-scroll-factor/
 rm -rf ~/.local/lib/wayland-scroll-factor/
-rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland
+rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland ~/.local/bin/wsf-session-wrapper
 ```
 
 If installed via pacman, remove the package instead:

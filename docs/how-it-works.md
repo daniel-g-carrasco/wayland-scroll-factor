@@ -29,6 +29,8 @@ The GUI and CLI both write the same config. They do not duplicate input logic.
   getter functions.
 - `wsf-hyprland`: launcher shim used with `start-hyprland --path` for Hyprland
   gesture tuning.
+- `wsf-session-wrapper`: optional greeter/session wrapper that detects selected
+  Hyprland sessions and routes them through `wsf-hyprland`.
 
 ## GNOME Wayland Flow
 
@@ -144,6 +146,17 @@ LD_PRELOAD=/path/to/libwsf_preload.so
 
 Then it runs the real `Hyprland`.
 
+When a greeter selects sessions from desktop entries, WSF can also be inserted
+with:
+
+```bash
+tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+```
+
+This matters for tuigreet because `--remember-session` can bypass the default
+`--cmd` on later logins. The session wrapper receives the selected command and
+only changes `Hyprland` / `start-hyprland` sessions.
+
 Inside the Hyprland process, the preload library:
 
 1. Detects the process name `Hyprland`.
@@ -179,6 +192,7 @@ The bootstrap/install scripts install files under the selected prefix, normally
 ~/.local/bin/wsf
 ~/.local/bin/wsf-gui
 ~/.local/bin/wsf-hyprland
+~/.local/bin/wsf-session-wrapper
 ~/.local/lib/wayland-scroll-factor/libwsf_preload.so
 ```
 

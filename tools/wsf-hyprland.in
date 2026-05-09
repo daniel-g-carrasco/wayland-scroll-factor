@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log() {
+  printf 'wsf-hyprland: %s\n' "$*" >&2
+}
+
 find_wsf_library() {
   local candidates=()
   local candidate
@@ -36,11 +40,12 @@ find_hyprland_binary() {
 
 hyprland_bin="$(find_hyprland_binary)"
 if [[ ! -x "$hyprland_bin" ]]; then
-  printf 'wsf-hyprland: Hyprland binary not found. Set WSF_REAL_HYPRLAND.\n' >&2
+  log 'Hyprland binary not found. Set WSF_REAL_HYPRLAND.'
   exit 127
 fi
 
 if wsf_lib="$(find_wsf_library)"; then
+  log "using preload library: $wsf_lib"
   export WSF_TARGETS="${WSF_TARGETS:-Hyprland}"
   export WSF_HYPRLAND_GESTURES_ONLY="${WSF_HYPRLAND_GESTURES_ONLY:-1}"
   export WSF_DEFER_PRUNE_UNTIL_TARGET="${WSF_DEFER_PRUNE_UNTIL_TARGET:-1}"
@@ -50,7 +55,8 @@ if wsf_lib="$(find_wsf_library)"; then
     *) export LD_PRELOAD="$wsf_lib${LD_PRELOAD:+:$LD_PRELOAD}" ;;
   esac
 else
-  printf 'wsf-hyprland: libwsf_preload.so not found; starting Hyprland without gesture preload.\n' >&2
+  log 'libwsf_preload.so not found; starting Hyprland without gesture preload.'
 fi
 
+log "exec: $hyprland_bin $*"
 exec "$hyprland_bin" "$@"

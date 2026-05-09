@@ -78,6 +78,18 @@ For login managers, set the session command to the equivalent of the
 `start-hyprland --path ... -- ...` command above. WSF does not modify login
 manager configuration automatically.
 
+For greetd/tuigreet, `--cmd` is only a default command. If `--remember-session`
+is enabled, tuigreet can relaunch the remembered session and bypass `--cmd`.
+Use the installed wrapper for selected/remembered sessions:
+
+```bash
+tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+```
+
+The wrapper receives the selected session command. It leaves unrelated sessions
+unchanged, wraps `Hyprland` with `wsf-hyprland`, and injects
+`--path wsf-hyprland` when the selected session command is `start-hyprland`.
+
 Example with a session wrapper:
 
 ```bash
@@ -130,6 +142,10 @@ start-hyprland --path /path/to/wsf-hyprland -- ...
 ```
 
 and still keep the `wsf apply` autostart for native scroll persistence.
+
+For greeters that support session wrappers, `wsf-session-wrapper` is usually
+safer than replacing the whole session command because it preserves session
+selection and leaves non-Hyprland sessions untouched.
 
 ## Source Audit
 
