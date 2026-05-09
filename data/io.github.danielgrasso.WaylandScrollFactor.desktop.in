@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Wayland Scroll Factor
-Comment=Adjust touchpad scroll and pinch sensitivity on Wayland
+Comment=Adjust touchpad scroll and pinch zoom/rotate sensitivity on Wayland
 Exec=@bindir@/wsf-gui
 Icon=io.github.danielgrasso.WaylandScrollFactor
 Terminal=false
-Categories=Settings;Utility;
+Categories=Settings;
 StartupNotify=true

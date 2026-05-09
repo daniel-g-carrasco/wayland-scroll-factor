@@ -5,7 +5,9 @@
   <summary>Adjust touchpad scroll and pinch zoom/rotate sensitivity on Wayland</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <developer_name>Daniel Grasso</developer_name>
+  <developer id="io.github.danielgrasso">
+    <name>Daniel Grasso</name>
+  </developer>
   <description>
     <p>
       Wayland Scroll Factor provides per-user control over touchpad scroll
@@ -16,6 +18,20 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="0.3.0-beta.1" date="2026-05-09">
+      <description>
+        <p>Testing beta release with experimental Hyprland backend support.</p>
+        <ul>
+          <li>hyprland: added native live scroll tuning through hyprctl</li>
+          <li>hyprland: added gestures-only preload mode for pinch zoom and pinch rotate tuning</li>
+          <li>hyprland: added wsf-hyprland launcher shim for start-hyprland</li>
+          <li>hyprland: added wsf-session-wrapper for greeters that select or remember sessions</li>
+          <li>gnome: improved runtime reload behavior on recent Mutter/GNOME builds</li>
+          <li>config: parse numeric factors independently from the user's locale</li>
+          <li>diagnostics: report live compositor preload state and Hyprland activation hints</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-04-10">
       <description>
         <p>Testing patch release focused on runtime activation and compatibility.</p>

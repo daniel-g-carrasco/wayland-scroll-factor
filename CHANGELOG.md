@@ -6,10 +6,14 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 
 ## [Unreleased]
 
+## [0.3.0-beta.1] - 2026-05-09
+
 ### Added
 - Experimental Hyprland native scroll backend using `hyprctl keyword input:touchpad:scroll_factor`.
 - Experimental `wsf-hyprland` launcher shim for Hyprland pinch zoom/rotate
   gesture tuning through `start-hyprland --path`.
+- Experimental `wsf-session-wrapper` for greeters such as tuigreet, including
+  setups where remembered sessions bypass a static `--cmd`.
 - New `docs/how-it-works.md` guide describing GNOME preload, Hyprland native
   scroll, Hyprland gesture preload, safety boundaries, and verification.
 - New `wsf apply` command to reapply saved settings to supported live compositor backends.
@@ -19,6 +23,17 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 
 ### Changed
 - The GUI reads the live Hyprland touchpad scroll factor when running under Hyprland and keeps vertical/horizontal scroll sliders synchronized there, matching Hyprland's single native scroll factor.
+- GNOME preload reload behavior is more resilient on recent Mutter/GNOME builds.
+- Factor parsing is locale-independent, so decimal config values such as `0.05`
+  work correctly under comma-decimal locales.
+- Hyprland diagnostics now report whether the gesture preload is actually mapped
+  inside the running compositor process.
+
+### Fixed
+- GNOME scroll scaling no longer falls back to `1.0` under locales where
+  `strtod()` expects comma decimals.
+- Hyprland pinch zoom/rotate activation now has a documented session-wrapper
+  path for greeters that select or remember sessions.
 
 ## [0.2.2] - 2026-04-10
 
