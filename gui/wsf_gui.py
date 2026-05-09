@@ -40,6 +40,7 @@ class WsfWindow(Adw.ApplicationWindow):
         self._last_doctor_output = ""
         self._hyprland_running = False
         self._hyprland_gesture_preload = False
+        self._gnome_preload_active = False
 
         self._toast_overlay = Adw.ToastOverlay()
         self.set_content(self._toast_overlay)
@@ -300,8 +301,10 @@ class WsfWindow(Adw.ApplicationWindow):
                     self._show_apply_toast("Saved. Hyprland gesture preload should pick it up live.")
                 else:
                     self._show_apply_toast("Saved. Restart Hyprland with WSF gesture preload to apply pinch controls.")
+            elif self._gnome_preload_active:
+                self._show_apply_toast("Saved. GNOME preload will reread it on the next handled gesture.")
             else:
-                self._show_apply_toast("Applied. Active preload sessions should pick up factor changes automatically.")
+                self._show_apply_toast("Saved. Log out and back in to load GNOME preload.")
             return
         self._show_toast(result.stderr.strip() or "Failed to apply settings.")
 
@@ -388,6 +391,7 @@ class WsfWindow(Adw.ApplicationWindow):
         hyprland_scroll = hyprland.get("touchpad_scroll_factor")
         self._hyprland_running = bool(hyprland.get("running", False))
         self._hyprland_gesture_preload = bool(hyprland_preload.get("library_mapped", False))
+        self._gnome_preload_active = bool(data.get("gnome_shell_library_mapped", False))
         if self._hyprland_running and hyprland_scroll is not None:
             scroll_vertical = hyprland_scroll
             scroll_horizontal = hyprland_scroll
@@ -416,6 +420,7 @@ class WsfWindow(Adw.ApplicationWindow):
         hyprland_preload = data.get("hyprland_preload", {})
         self._hyprland_running = bool(hyprland.get("running", False))
         self._hyprland_gesture_preload = bool(hyprland_preload.get("library_mapped", False))
+        self._gnome_preload_active = bool(data.get("gnome_shell_library_mapped", False))
         self._loading = True
         self._enable_switch.set_active(bool(data.get("enabled", False)))
         if self._hyprland_running:
@@ -426,7 +431,10 @@ class WsfWindow(Adw.ApplicationWindow):
                 self._enabled_row.set_subtitle("Hyprland scroll applies live; pinch needs compositor restart")
         else:
             self._enable_switch.set_sensitive(True)
-            self._enabled_row.set_subtitle("Enable/disable requires logout/login")
+            if self._gnome_preload_active:
+                self._enabled_row.set_subtitle("GNOME preload is active; enable/disable still requires logout/login")
+            else:
+                self._enabled_row.set_subtitle("Enable/disable requires logout/login")
         self._loading = False
 
     def _show_apply_toast(self, message):

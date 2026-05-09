@@ -57,7 +57,9 @@ Then log out and log back in (or reboot).
 
 Notes:
 - `wsf enable` tries `systemctl --user daemon-reexec` automatically so the user manager reloads `~/.config/environment.d`.
-- Once WSF is active in `gnome-shell`, later `wsf set ...` changes should apply live without another logout.
+- Once WSF is active in `gnome-shell`, later `wsf set ...` changes are re-read
+  by the preload on handled gesture events. They should not require another
+  logout, but test with a new gesture after changing values.
 - On Hyprland, scroll factor changes apply live through `hyprctl` when a running Hyprland session is detected. Use `wsf apply` to reapply the saved config.
 - To persist Hyprland live settings across compositor restarts, keep static `touchpad.scroll_factor` commented out and add the documented `wsf apply` autostart command to your Hyprland startup config.
 

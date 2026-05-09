@@ -103,7 +103,9 @@ wsf disable
 
 Then log out and log back in.
 
-Once the preload is already loaded in `gnome-shell`, later `wsf set ...` changes should apply live.
+Once the preload is already loaded in `gnome-shell`, later `wsf set ...`
+changes are re-read by WSF on handled gesture events. You should not need
+another logout for factor changes, but start a new gesture when testing.
 
 ---
 

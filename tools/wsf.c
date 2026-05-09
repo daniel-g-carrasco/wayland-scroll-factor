@@ -1055,7 +1055,7 @@ static int wsf_cmd_status(bool json) {
 			printf("runtime gesture reload: inactive; restart Hyprland with WSF gestures-only preload to test pinch controls\n");
 		}
 	} else if (runtime.gnome_shell_library_mapped) {
-		printf("runtime config reload: active (factor changes should apply without logout)\n");
+		printf("runtime config reload: active (GNOME preload rereads factors on handled gestures)\n");
 	} else {
 		printf("runtime config reload: pending (GNOME Shell has not loaded WSF yet)\n");
 	}
@@ -1064,7 +1064,8 @@ static int wsf_cmd_status(bool json) {
 	} else {
 		printf("note: logout/login required after preload enable/disable\n");
 	}
-	if (!hyprland.running && env_present && !runtime.user_manager_matches) {
+	if (!hyprland.running && env_present && !runtime.user_manager_matches &&
+		!runtime.gnome_shell_library_mapped) {
 		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
 	}
 	if (!hyprland.running && runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
@@ -1840,11 +1841,12 @@ static int wsf_cmd_doctor(bool json) {
 			printf("runtime gesture reload: inactive; launch Hyprland with WSF_TARGETS=Hyprland and WSF_HYPRLAND_GESTURES_ONLY=1 to test pinch controls\n");
 		}
 	} else if (runtime.gnome_shell_library_mapped) {
-		printf("runtime config reload: active (factor changes should apply live)\n");
+		printf("runtime config reload: active (GNOME preload rereads factors on handled gestures)\n");
 	} else {
 		printf("runtime config reload: inactive until GNOME Shell loads WSF\n");
 	}
-	if (!hyprland.running && env_present && !runtime.user_manager_matches) {
+	if (!hyprland.running && env_present && !runtime.user_manager_matches &&
+		!runtime.gnome_shell_library_mapped) {
 		printf("hint: environment.d exists but systemd --user has not picked it up yet.\n");
 		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
 	}

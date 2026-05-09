@@ -64,8 +64,10 @@ The preload library then:
 6. Removes WSF from `LD_PRELOAD` in the process environment after loading, so
    child applications do not inherit the preload.
 
-Once loaded, factor changes are picked up live from the config file. Logout is
-only required to load or unload the preload itself.
+Once loaded, WSF checks the config file again while handling libinput gesture
+events. Factor changes should not require another logout, but they are not a
+separate compositor command: test with a new gesture after changing a value.
+Logout is only required to load or unload the preload itself.
 
 ## Hyprland Scroll Flow
 
