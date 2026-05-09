@@ -253,6 +253,7 @@ Requirements:
 - [`docs/how-it-works.md`](docs/how-it-works.md)
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`docs/hyprland.md`](docs/hyprland.md)
+- [`docs/release-checklist.md`](docs/release-checklist.md)
 - [`docs/design.md`](docs/design.md)
 - [`CHANGELOG.md`](CHANGELOG.md)
 

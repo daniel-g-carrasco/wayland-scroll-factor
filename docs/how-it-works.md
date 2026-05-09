@@ -77,6 +77,11 @@ preload never observes a half-written config. The preload also refreshes the
 effective factors periodically while handling gestures instead of relying only
 on file timestamp changes.
 
+Config values are parsed with the C numeric locale regardless of the process
+locale. This matters because GNOME Shell may run with a locale that uses a
+comma decimal separator, while the WSF config format intentionally uses ASCII
+decimal values such as `0.0500`.
+
 ## Hyprland Scroll Flow
 
 Hyprland exposes a native touchpad scroll setting:

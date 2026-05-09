@@ -61,5 +61,25 @@ printf 'WSF_DEBUG=1\n' >> ~/.config/environment.d/wayland-scroll-factor.conf
 journalctl --user -b -g "wsf:"
 ```
 
+For scroll-hook debugging, `WSF_TRACE=1` logs a small sampled set of scroll
+events, including axis, original value, factor, scaled result, event type, and
+axis source:
+
+```
+printf 'WSF_TRACE=1\n' >> ~/.config/environment.d/wayland-scroll-factor.conf
+# log out / log back in
+journalctl --user -b _COMM=gnome-shell | grep -E 'wsf: (init|trace|reloaded)'
+```
+
+Remove it after debugging:
+
+```
+sed -i '/^WSF_TRACE=/d' ~/.config/environment.d/wayland-scroll-factor.conf
+```
+
+WSF config files always use `.` as decimal separator. Current builds parse
+those values independently of the process locale, so GNOME sessions using a
+comma-decimal locale should still read values such as `0.0500` correctly.
+
 If `libinput --version` is missing, install `libinput-tools` on Arch for
 additional diagnostics.
