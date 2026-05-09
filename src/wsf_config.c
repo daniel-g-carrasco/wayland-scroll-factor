@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,6 +68,7 @@ const char *wsf_config_path(void) {
 static bool wsf_parse_factor_str(const char *input, double *out_factor) {
 	char *end = NULL;
 	double value = 0.0;
+	locale_t c_locale = (locale_t) 0;
 
 	if (input == NULL || out_factor == NULL) {
 		return false;
@@ -77,7 +79,13 @@ static bool wsf_parse_factor_str(const char *input, double *out_factor) {
 	}
 
 	errno = 0;
-	value = strtod(input, &end);
+	c_locale = newlocale(LC_NUMERIC_MASK, "C", (locale_t) 0);
+	if (c_locale != (locale_t) 0) {
+		value = strtod_l(input, &end, c_locale);
+		freelocale(c_locale);
+	} else {
+		value = strtod(input, &end);
+	}
 	if (input == end || errno == ERANGE) {
 		return false;
 	}
@@ -96,6 +104,24 @@ static bool wsf_parse_factor_str(const char *input, double *out_factor) {
 
 static bool wsf_factor_in_range(double factor) {
 	return factor >= WSF_FACTOR_MIN && factor <= WSF_FACTOR_MAX;
+}
+
+static int wsf_write_factor(FILE *file, const char *key, double factor) {
+	int whole = 0;
+	int frac = 0;
+
+	if (file == NULL || key == NULL) {
+		return -1;
+	}
+
+	whole = (int) factor;
+	frac = (int) (((factor - (double) whole) * 10000.0) + 0.5);
+	if (frac >= 10000) {
+		whole++;
+		frac -= 10000;
+	}
+
+	return fprintf(file, "%s=%d.%04d\n", key, whole, frac);
 }
 
 void wsf_config_values_init(struct wsf_config_values *values) {
@@ -416,19 +442,29 @@ static int wsf_config_write_all(
 	}
 
 	if (values->has_factor) {
-		fprintf(file, "factor=%.4f\n", values->factor);
+		if (wsf_write_factor(file, "factor", values->factor) < 0) {
+			goto write_failed;
+		}
 	}
 	if (values->has_scroll_vertical) {
-		fprintf(file, "scroll_vertical_factor=%.4f\n", values->scroll_vertical_factor);
+		if (wsf_write_factor(file, "scroll_vertical_factor", values->scroll_vertical_factor) < 0) {
+			goto write_failed;
+		}
 	}
 	if (values->has_scroll_horizontal) {
-		fprintf(file, "scroll_horizontal_factor=%.4f\n", values->scroll_horizontal_factor);
+		if (wsf_write_factor(file, "scroll_horizontal_factor", values->scroll_horizontal_factor) < 0) {
+			goto write_failed;
+		}
 	}
 	if (values->has_pinch_zoom) {
-		fprintf(file, "pinch_zoom_factor=%.4f\n", values->pinch_zoom_factor);
+		if (wsf_write_factor(file, "pinch_zoom_factor", values->pinch_zoom_factor) < 0) {
+			goto write_failed;
+		}
 	}
 	if (values->has_pinch_rotate) {
-		fprintf(file, "pinch_rotate_factor=%.4f\n", values->pinch_rotate_factor);
+		if (wsf_write_factor(file, "pinch_rotate_factor", values->pinch_rotate_factor) < 0) {
+			goto write_failed;
+		}
 	}
 
 	if (fflush(file) != 0) {
@@ -455,6 +491,12 @@ static int wsf_config_write_all(
 	}
 
 	return 0;
+
+write_failed:
+	wsf_debug_log(debug, "failed to write config: %s", strerror(errno));
+	fclose(file);
+	unlink(tmp_path);
+	return -1;
 }
 
 int wsf_config_write_updates(
