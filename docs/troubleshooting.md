@@ -41,6 +41,12 @@
   `hyprland gesture preload: active`.
 - If it is inactive, confirm `wsf-hyprland` is installed and your login/session
   command uses `start-hyprland --path "$(command -v wsf-hyprland)" -- ...`.
+- If Hyprland shows a warning that it was launched directly, your session is
+  bypassing `start-hyprland`. Change the session command to use
+  `start-hyprland --path wsf-hyprland` instead of calling `Hyprland` directly.
+- If `start-hyprland` appears in the process tree but the gesture preload is
+  inactive, run `wsf doctor` and check the `hyprland launch recommendation`
+  line.
 
 ## Debug mode
 

@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Tune touchpad scroll and gesture feel on Wayland</b><br>
-  GNOME Wayland preload backend, plus experimental native Hyprland scroll support.<br>
+  GNOME Wayland preload backend, plus experimental Hyprland scroll and gesture support.<br>
   <i>Status: testing</i>
 </p>
 
@@ -51,6 +51,9 @@ meson install -C build
 ```
 
 The installer places files under `~/.local`.
+
+It installs `wsf`, `wsf-gui`, `wsf-hyprland`, and
+`libwsf_preload.so`. It does not automatically modify your login manager.
 
 ---
 
@@ -138,6 +141,10 @@ letting WSF preload only the compositor process for gesture hooks. Once
 `wsf doctor` reports `hyprland gesture preload: active`, pinch factor changes
 are picked up live from the WSF config.
 
+WSF does not modify login manager configuration automatically. If you use a
+display manager or a custom session script, point that session command at the
+`start-hyprland --path ...` form above.
+
 ### Hyprland Persistence
 
 Hyprland runtime settings can be overwritten by static config during reload/login. If WSF should manage scroll speed, remove or comment out any static `touchpad.scroll_factor` / `input:touchpad:scroll_factor` value from your Hyprland config, or keep it intentionally in sync with WSF.
@@ -151,6 +158,8 @@ exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x
 This reapplies the saved WSF value when Hyprland starts.
 
 More details: [`docs/hyprland.md`](docs/hyprland.md)
+
+Architecture details: [`docs/how-it-works.md`](docs/how-it-works.md)
 
 ---
 
@@ -239,6 +248,7 @@ Requirements:
 ## Docs
 
 - [`docs/install.md`](docs/install.md)
+- [`docs/how-it-works.md`](docs/how-it-works.md)
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`docs/hyprland.md`](docs/hyprland.md)
 - [`docs/design.md`](docs/design.md)

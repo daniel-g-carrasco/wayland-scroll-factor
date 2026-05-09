@@ -57,6 +57,11 @@
   integrations should keep static `touchpad.scroll_factor` commented out and
   run `wsf apply` from session startup, preferably through a shell fallback that
   tries `wsf` from `PATH` and then `$HOME/.local/bin/wsf`.
+- Distribution integration: WSF installs `wsf-hyprland`, but does not rewrite
+  login manager configuration. Public packages or OS images can expose a
+  Hyprland session that runs `start-hyprland --path /path/to/wsf-hyprland -- ...`.
+
+Full runtime flow: [`how-it-works.md`](how-it-works.md).
 
 ## MVP design (GNOME Wayland)
 

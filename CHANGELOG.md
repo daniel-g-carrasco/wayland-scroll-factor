@@ -10,6 +10,8 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 - Experimental Hyprland native scroll backend using `hyprctl keyword input:touchpad:scroll_factor`.
 - Experimental `wsf-hyprland` launcher shim for Hyprland pinch zoom/rotate
   gesture tuning through `start-hyprland --path`.
+- New `docs/how-it-works.md` guide describing GNOME preload, Hyprland native
+  scroll, Hyprland gesture preload, safety boundaries, and verification.
 - New `wsf apply` command to reapply saved settings to supported live compositor backends.
 - `wsf status` and `wsf doctor` now report Hyprland backend availability, the
   live touchpad scroll factor, and gesture preload state.

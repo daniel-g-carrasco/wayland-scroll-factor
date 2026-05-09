@@ -13,6 +13,11 @@ hyprctl keyword input:touchpad:scroll_factor 0.35
 WSF uses that native runtime setting for scroll instead of patching Hyprland.
 The preload library is not loaded inside Hyprland by default.
 
+For pinch zoom/rotate, WSF uses a separate launch-time path through
+`wsf-hyprland`. This is intentionally separate from scroll because Hyprland
+already handles scroll natively, while pinch zoom/rotate do not have equivalent
+native settings.
+
 ## Current Behavior
 
 - `wsf set <factor>` writes the WSF config and applies
@@ -73,6 +78,16 @@ For login managers, set the session command to the equivalent of the
 `start-hyprland --path ... -- ...` command above. WSF does not modify login
 manager configuration automatically.
 
+Example with a session wrapper:
+
+```bash
+exec start-hyprland --path "$(command -v wsf-hyprland)" -- --config "$HOME/.config/hypr/hyprland.conf"
+```
+
+If your system already uses `start-hyprland`, keep it and add only the `--path`
+argument. Avoid launching `Hyprland` directly unless your distro/session already
+does that, because modern Hyprland recommends `start-hyprland`.
+
 ## Persistence
 
 `hyprctl keyword ...` changes the running Hyprland session. To make WSF the
@@ -107,6 +122,15 @@ For system images or preconfigured desktops, prefer launching `wsf apply` as
 part of the compositor/session startup path after Hyprland has exported its
 runtime environment.
 
+If you also want pinch zoom/rotate, the system image should launch Hyprland
+through:
+
+```bash
+start-hyprland --path /path/to/wsf-hyprland -- ...
+```
+
+and still keep the `wsf apply` autostart for native scroll persistence.
+
 ## Source Audit
 
 Audited on 2026-05-09 against:
@@ -125,3 +149,5 @@ Findings:
 - Aquamarine still reads libinput scroll and pinch values through libinput
   getter functions, and the `wsf-hyprland` shim can preload WSF only for
   Hyprland gesture hooks.
+
+See also: [`how-it-works.md`](how-it-works.md).

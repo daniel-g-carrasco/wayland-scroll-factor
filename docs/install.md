@@ -123,6 +123,10 @@ wsf doctor
 
 Look for `hyprland gesture preload: active`.
 
+The installer provides `wsf-hyprland`, but it does not edit greetd, SDDM, or
+custom session files. Wire the command above into the session launcher used by
+your desktop.
+
 For Hyprland-based OS images, install WSF with the desktop package set and add:
 
 ```
