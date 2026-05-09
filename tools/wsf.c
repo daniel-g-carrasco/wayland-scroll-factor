@@ -1063,10 +1063,10 @@ static int wsf_cmd_status(bool json) {
 	} else {
 		printf("note: logout/login required after preload enable/disable\n");
 	}
-	if (env_present && !runtime.user_manager_matches) {
+	if (!hyprland.running && env_present && !runtime.user_manager_matches) {
 		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
 	}
-	if (runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
+	if (!hyprland.running && runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
 		printf("hint: GNOME Shell has not loaded WSF yet; log out/in, and if that still fails, reboot.\n");
 	}
 	return 0;
@@ -1799,11 +1799,11 @@ static int wsf_cmd_doctor(bool json) {
 	} else {
 		printf("runtime config reload: inactive until GNOME Shell loads WSF\n");
 	}
-	if (env_present && !runtime.user_manager_matches) {
+	if (!hyprland.running && env_present && !runtime.user_manager_matches) {
 		printf("hint: environment.d exists but systemd --user has not picked it up yet.\n");
 		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
 	}
-	if (runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
+	if (!hyprland.running && runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
 		printf("hint: systemd --user is ready but GNOME Shell has not loaded WSF yet.\n");
 		printf("hint: log out/in; if that still fails on your distro, reboot once.\n");
 	}
