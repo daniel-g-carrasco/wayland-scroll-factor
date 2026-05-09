@@ -42,8 +42,11 @@
 - If it is inactive, confirm `wsf-hyprland` is installed and your login/session
   command uses `start-hyprland --path "$(command -v wsf-hyprland)" -- ...`.
 - With tuigreet, `--remember-session` overrides `--cmd` after a session has been
-  remembered. Use `--session-wrapper "$(command -v wsf-session-wrapper)"` so
-  selected or remembered Hyprland sessions are still wrapped.
+  remembered. Use `--session-wrapper /usr/bin/wsf-session-wrapper` for package
+  installs, or a persistent fallback wrapper in `/usr/local/bin`.
+- Do not leave `/etc/greetd/config.toml` pointing to
+  `~/.local/bin/wsf-session-wrapper`. If that per-user install is removed,
+  greetd can fail to start the selected session.
 - If Hyprland shows a warning that it was launched directly, your session is
   bypassing `start-hyprland`. Change the session command to use
   `start-hyprland --path wsf-hyprland` instead of calling `Hyprland` directly.

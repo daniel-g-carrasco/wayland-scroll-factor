@@ -80,15 +80,38 @@ manager configuration automatically.
 
 For greetd/tuigreet, `--cmd` is only a default command. If `--remember-session`
 is enabled, tuigreet can relaunch the remembered session and bypass `--cmd`.
-Use the installed wrapper for selected/remembered sessions:
+Use the system-installed wrapper for selected/remembered sessions:
 
 ```bash
-tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+tuigreet ... --session-wrapper /usr/bin/wsf-session-wrapper
 ```
 
 The wrapper receives the selected session command. It leaves unrelated sessions
 unchanged, wraps `Hyprland` with `wsf-hyprland`, and injects
 `--path wsf-hyprland` when the selected session command is `start-hyprland`.
+
+Avoid pointing greetd at `~/.local/bin/wsf-session-wrapper`. System greeter
+configuration outlives per-user installs; if the per-user file is removed, the
+login session can fail before Hyprland starts.
+
+For maximum rollback safety, use a persistent fallback wrapper:
+
+```bash
+sudo tee /usr/local/bin/wsf-session-wrapper-fallback >/dev/null <<'EOF'
+#!/bin/sh
+if command -v wsf-session-wrapper >/dev/null 2>&1; then
+  exec wsf-session-wrapper "$@"
+fi
+exec "$@"
+EOF
+sudo chmod 755 /usr/local/bin/wsf-session-wrapper-fallback
+```
+
+Then configure tuigreet with:
+
+```bash
+tuigreet ... --session-wrapper /usr/local/bin/wsf-session-wrapper-fallback
+```
 
 Example with a session wrapper:
 

@@ -150,12 +150,18 @@ When a greeter selects sessions from desktop entries, WSF can also be inserted
 with:
 
 ```bash
-tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+tuigreet ... --session-wrapper /usr/bin/wsf-session-wrapper
 ```
 
 This matters for tuigreet because `--remember-session` can bypass the default
 `--cmd` on later logins. The session wrapper receives the selected command and
 only changes `Hyprland` / `start-hyprland` sessions.
+
+Do not hardcode a per-user `~/.local/bin/wsf-session-wrapper` path in system
+greeter configuration. If that per-user install is removed, greetd can point at
+a missing command and fail to start the selected session. Use the system path
+from a package install, or a persistent fallback wrapper under `/usr/local/bin`
+that executes the original session unchanged when WSF is not installed.
 
 Inside the Hyprland process, the preload library:
 
@@ -199,6 +205,11 @@ The bootstrap/install scripts install files under the selected prefix, normally
 They do not automatically rewrite login manager configuration. That is
 intentional: greetd, SDDM, TTY scripts, and distribution sessions all wire
 Hyprland differently.
+
+If a login manager is configured manually, keep that configuration in sync with
+the install type. Per-user `~/.local` wrapper paths are convenient for testing
+but are unsafe in persistent system greeter configs unless a fallback wrapper is
+used.
 
 For general users, WSF documents the command they need:
 

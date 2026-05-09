@@ -157,10 +157,10 @@ custom session files. Wire the command above into the session launcher used by
 your desktop.
 
 For greetd/tuigreet setups that select sessions from the menu, use the installed
-session wrapper:
+session wrapper when WSF is installed system-wide:
 
 ```
-tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+tuigreet ... --session-wrapper /usr/bin/wsf-session-wrapper
 ```
 
 This is especially important when `tuigreet --remember-session` is enabled:
@@ -168,6 +168,32 @@ tuigreet documents that remembered sessions override `--cmd` on later logins.
 `wsf-session-wrapper` leaves non-Hyprland sessions unchanged and injects
 `wsf-hyprland` only when the selected command is `Hyprland` or
 `start-hyprland`.
+
+Do not hardcode `~/.local/bin/wsf-session-wrapper` in `/etc/greetd/config.toml`.
+If that per-user install is removed before the greetd config is reverted, login
+can fail because greetd points at a missing wrapper.
+
+For a safer reversible setup, create a wrapper that is independent from WSF:
+
+```
+sudo tee /usr/local/bin/wsf-session-wrapper-fallback >/dev/null <<'EOF'
+#!/bin/sh
+if command -v wsf-session-wrapper >/dev/null 2>&1; then
+  exec wsf-session-wrapper "$@"
+fi
+exec "$@"
+EOF
+sudo chmod 755 /usr/local/bin/wsf-session-wrapper-fallback
+```
+
+Then configure tuigreet with:
+
+```
+tuigreet ... --session-wrapper /usr/local/bin/wsf-session-wrapper-fallback
+```
+
+If WSF is uninstalled later, the fallback wrapper still exists and launches the
+selected session unchanged.
 
 For Hyprland-based OS images, install WSF with the desktop package set and add:
 

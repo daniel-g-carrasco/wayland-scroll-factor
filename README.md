@@ -167,16 +167,23 @@ display manager or a custom session script, point that session command at the
 `start-hyprland --path ...` form above.
 
 For greetd/tuigreet setups that select desktop entries or use
-`--remember-session`, prefer the installed session wrapper:
+`--remember-session`, use the system-installed wrapper when WSF is installed
+from a distro package:
 
 ```bash
-tuigreet ... --session-wrapper "$(command -v wsf-session-wrapper)"
+tuigreet ... --session-wrapper /usr/bin/wsf-session-wrapper
 ```
 
 `tuigreet --remember-session` overrides `--cmd` after the first remembered
 login, so a plain `--cmd start-hyprland --path ...` may be silently bypassed.
 The wrapper leaves non-Hyprland sessions unchanged and only injects
 `wsf-hyprland` when the selected session is `Hyprland` or `start-hyprland`.
+
+Do not hardcode a per-user path such as `~/.local/bin/wsf-session-wrapper` in
+`/etc/greetd/config.toml`: if that user install is removed, the greeter can no
+longer start the session. If you need a reversible setup, point greetd at a
+small fallback wrapper in `/usr/local/bin` that runs WSF when available and
+otherwise executes the original session command.
 
 ### Hyprland Persistence
 
