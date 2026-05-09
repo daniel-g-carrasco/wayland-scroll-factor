@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/daniel-g-carrasco/wayland-scroll-factor.git"
+WSF_REF="${WSF_REF:-feature/hyprland-backend}"
 DEST="${DEST:-$HOME/wayland-scroll-factor}"
 
 install_dnf_libinput_pkg() {
@@ -50,9 +51,14 @@ install_deps() {
 install_deps
 
 if [ -d "$DEST/.git" ]; then
-  git -C "$DEST" pull --rebase
+  git -C "$DEST" fetch --all --tags
 else
   git clone "$REPO_URL" "$DEST"
+fi
+
+git -C "$DEST" checkout "$WSF_REF"
+if git -C "$DEST" symbolic-ref -q HEAD >/dev/null; then
+  git -C "$DEST" pull --ff-only
 fi
 
 "$DEST/scripts/install.sh"

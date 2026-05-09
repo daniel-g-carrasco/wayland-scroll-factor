@@ -68,9 +68,9 @@ Recommended startup config pattern:
 exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x "$HOME/.local/bin/wsf" ]; then "$HOME/.local/bin/wsf" apply; fi'
 ```
 
-For Margine OS integration, prefer launching `wsf apply` as part of the
-compositor/session startup path after Hyprland has exported its runtime
-environment.
+For system images or preconfigured desktops, prefer launching `wsf apply` as
+part of the compositor/session startup path after Hyprland has exported its
+runtime environment.
 
 ## Source Audit
 

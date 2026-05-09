@@ -19,10 +19,10 @@ Or use the helper script:
 ./scripts/install.sh
 ```
 
-One-shot bootstrap (installs deps, clones repo, runs install):
+One-shot bootstrap for the current testing branch (installs deps, clones repo, runs install):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/feature/hyprland-backend/scripts/bootstrap.sh | WSF_REF=feature/hyprland-backend bash
 ```
 
 This installs:

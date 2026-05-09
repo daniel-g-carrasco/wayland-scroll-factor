@@ -107,8 +107,8 @@ class WsfWindow(Adw.ApplicationWindow):
         self._system_group = Adw.PreferencesGroup(title="System integration")
         content.append(self._system_group)
 
-        enabled_row = Adw.ActionRow(title="Enabled")
-        enabled_row.set_subtitle("Enable/disable applies after next login")
+        enabled_row = Adw.ActionRow(title="GNOME preload")
+        enabled_row.set_subtitle("Enable/disable requires logout/login")
         self._enabled_row = enabled_row
         self._enable_switch = Gtk.Switch()
         self._enable_switch.set_valign(Gtk.Align.CENTER)
@@ -294,6 +294,8 @@ class WsfWindow(Adw.ApplicationWindow):
                 self._set_slider_value("scroll_horizontal", value)
                 self._loading = False
                 self._show_apply_toast("Applied live via Hyprland native scroll factor.")
+            elif self._hyprland_running:
+                self._show_apply_toast("Saved. Hyprland has no native backend for this gesture yet.")
             else:
                 self._show_apply_toast("Applied. Active preload sessions should pick up factor changes automatically.")
             return
@@ -302,13 +304,16 @@ class WsfWindow(Adw.ApplicationWindow):
     def _on_enabled_toggled(self, switch, _param):
         if self._loading:
             return
+        if self._hyprland_running:
+            self._show_toast("Not needed on Hyprland; scroll applies live.")
+            return
         cmd = "enable" if switch.get_active() else "disable"
         result = self._run_wsf([cmd])
         if not result:
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_apply_toast("Applied. Log out and back in to change activation state.")
+            self._show_apply_toast("Applied. Log out and back in to change preload activation.")
             return
         self._show_toast(result.stderr.strip() or "Failed to change status.")
 
@@ -406,9 +411,11 @@ class WsfWindow(Adw.ApplicationWindow):
         self._loading = True
         self._enable_switch.set_active(bool(data.get("enabled", False)))
         if self._hyprland_running:
-            self._enabled_row.set_subtitle("GNOME preload toggle; Hyprland scroll applies live")
+            self._enable_switch.set_sensitive(False)
+            self._enabled_row.set_subtitle("Not needed for Hyprland scroll; changes apply live")
         else:
-            self._enabled_row.set_subtitle("Enable/disable applies after next login")
+            self._enable_switch.set_sensitive(True)
+            self._enabled_row.set_subtitle("Enable/disable requires logout/login")
         self._loading = False
 
     def _show_apply_toast(self, message):
