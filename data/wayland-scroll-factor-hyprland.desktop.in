@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Hyprland (WSF gestures)
+Comment=Hyprland with Wayland Scroll Factor gesture preload
+Exec=@bindir@/wsf-start-hyprland
+TryExec=@bindir@/wsf-start-hyprland
+Type=Application
+DesktopNames=Hyprland
+Keywords=tiling;wayland;compositor;touchpad;gesture;

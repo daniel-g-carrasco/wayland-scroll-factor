@@ -31,6 +31,8 @@ The GUI and CLI both write the same config. They do not duplicate input logic.
   gesture tuning.
 - `wsf-session-wrapper`: optional greeter/session wrapper that detects selected
   Hyprland sessions and routes them through `wsf-hyprland`.
+- `wsf-start-hyprland`: launcher used by the packaged `Hyprland (WSF gestures)`
+  session entry.
 
 ## GNOME Wayland Flow
 
@@ -163,6 +165,11 @@ a missing command and fail to start the selected session. Use the system path
 from a package install, or a persistent fallback wrapper under `/usr/local/bin`
 that executes the original session unchanged when WSF is not installed.
 
+For package installs, WSF also installs a separate
+`Hyprland (WSF gestures)` Wayland session. That session runs
+`wsf-start-hyprland`, which uses `start-hyprland --path wsf-hyprland` when
+`start-hyprland` exists, and otherwise falls back to `wsf-hyprland`.
+
 Inside the Hyprland process, the preload library:
 
 1. Detects the process name `Hyprland`.
@@ -199,7 +206,9 @@ The bootstrap/install scripts install files under the selected prefix, normally
 ~/.local/bin/wsf-gui
 ~/.local/bin/wsf-hyprland
 ~/.local/bin/wsf-session-wrapper
+~/.local/bin/wsf-start-hyprland
 ~/.local/lib/wayland-scroll-factor/libwsf_preload.so
+~/.local/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
 ```
 
 They do not automatically rewrite login manager configuration. That is

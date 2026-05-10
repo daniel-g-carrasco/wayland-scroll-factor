@@ -15,16 +15,15 @@ find_wsf_hyprland() {
     candidates+=("$WSF_HYPRLAND_SHIM")
   fi
 
-  if command -v wsf-hyprland >/dev/null 2>&1; then
-    candidates+=("$(command -v wsf-hyprland)")
-  fi
-
   candidates+=(
     "@WSF_BINDIR@/wsf-hyprland"
-    "${HOME:-}/.local/bin/wsf-hyprland"
     "/usr/local/bin/wsf-hyprland"
     "/usr/bin/wsf-hyprland"
   )
+
+  if command -v wsf-hyprland >/dev/null 2>&1; then
+    candidates+=("$(command -v wsf-hyprland)")
+  fi
 
   for candidate in "${candidates[@]}"; do
     [[ -x "$candidate" ]] || continue

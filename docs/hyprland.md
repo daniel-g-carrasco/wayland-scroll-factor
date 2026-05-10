@@ -55,6 +55,18 @@ Hyprland's recommended launcher in the path:
 start-hyprland --path "$(command -v wsf-hyprland)" -- --config ~/.config/hypr/hyprland.conf
 ```
 
+Package installs provide a safer no-config-edit path: a separate Wayland session
+named:
+
+```text
+Hyprland (WSF gestures)
+```
+
+Selecting that session in the greeter runs `wsf-start-hyprland`, which keeps
+`start-hyprland` in the launch chain when available and injects WSF only into
+the Hyprland compositor process. The existing `Hyprland` session is left
+unchanged.
+
 `wsf-hyprland` finds `libwsf_preload.so`, sets the Hyprland gesture-only
 environment, and then executes the real `Hyprland` binary. This does not use
 `/etc/ld.so.preload`; it only affects the launched compositor process. WSF

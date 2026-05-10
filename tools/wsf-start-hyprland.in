@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+find_executable() {
+  local candidate
+
+  for candidate in "$@"; do
+    [[ -x "$candidate" ]] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+
+  return 1
+}
+
+find_from_candidates_or_path() {
+  local name="$1"
+  shift
+
+  if find_executable "$@"; then
+    return 0
+  fi
+
+  command -v "$name"
+}
+
+find_from_path_or_candidates() {
+  local name="$1"
+  shift
+
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
+    return 0
+  fi
+
+  find_executable "$@"
+}
+
+wsf_hyprland="$(find_from_candidates_or_path \
+  wsf-hyprland \
+  "@WSF_BINDIR@/wsf-hyprland" \
+  "/usr/local/bin/wsf-hyprland" \
+  "/usr/bin/wsf-hyprland" \
+  || true)"
+
+start_hyprland="$(find_from_path_or_candidates \
+  start-hyprland \
+  "/usr/bin/start-hyprland" \
+  "/usr/local/bin/start-hyprland" \
+  || true)"
+
+if [[ -n "$wsf_hyprland" && -n "$start_hyprland" ]]; then
+  exec "$start_hyprland" --path "$wsf_hyprland" "$@"
+fi
+
+if [[ -n "$wsf_hyprland" ]]; then
+  exec "$wsf_hyprland" "$@"
+fi
+
+if [[ -n "$start_hyprland" ]]; then
+  exec "$start_hyprland" "$@"
+fi
+
+exec Hyprland "$@"

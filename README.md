@@ -153,6 +153,16 @@ Hyprland does not currently expose native client pinch zoom/rotate sensitivity
 settings. WSF can tune those controls by starting Hyprland through the installed
 `wsf-hyprland` shim.
 
+Package installs also provide a separate Wayland session:
+
+```text
+Hyprland (WSF gestures)
+```
+
+Select that session in your greeter to start Hyprland with WSF pinch
+zoom/rotate support. This avoids editing `greetd`, SDDM, or other login-manager
+configuration directly. Existing Hyprland sessions are left unchanged.
+
 ```bash
 start-hyprland --path "$(command -v wsf-hyprland)" -- --config ~/.config/hypr/hyprland.conf
 ```

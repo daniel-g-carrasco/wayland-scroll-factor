@@ -57,6 +57,8 @@ This installs:
 - `~/.local/bin/wsf-gui`
 - `~/.local/bin/wsf-hyprland`
 - `~/.local/bin/wsf-session-wrapper`
+- `~/.local/bin/wsf-start-hyprland`
+- `~/.local/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop`
 - `~/.local/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop`
 - icons under `~/.local/share/icons/hicolor/`
 
@@ -143,6 +145,15 @@ For pinch zoom/rotate, launch Hyprland through WSF's shim while keeping
 start-hyprland --path "$(command -v wsf-hyprland)" -- --config ~/.config/hypr/hyprland.conf
 ```
 
+Package installs also add a separate Wayland session:
+
+```
+Hyprland (WSF gestures)
+```
+
+Select that session in the greeter to start Hyprland with gesture tuning,
+without editing login-manager configuration.
+
 The shim only preloads WSF into the compositor process for gesture hooks. Check
 activation with:
 
@@ -226,7 +237,8 @@ Then remove user config if needed:
 rm -f ~/.config/environment.d/wayland-scroll-factor.conf
 rm -rf ~/.config/wayland-scroll-factor/
 rm -rf ~/.local/lib/wayland-scroll-factor/
-rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland ~/.local/bin/wsf-session-wrapper
+rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland ~/.local/bin/wsf-session-wrapper ~/.local/bin/wsf-start-hyprland
+rm -f ~/.local/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
 ```
 
 If installed via pacman, remove the package instead:

@@ -6,6 +6,11 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 
 ## [Unreleased]
 
+### Added
+- Hyprland: install an optional `Hyprland (WSF gestures)` Wayland session and a
+  `wsf-start-hyprland` launcher so users can enable gesture preload from the
+  greeter without editing login-manager configuration.
+
 ### Fixed
 - GUI: copying diagnostics now uses GTK4 clipboard content providers instead of
   the removed `Gdk.Clipboard.set_text()` API.

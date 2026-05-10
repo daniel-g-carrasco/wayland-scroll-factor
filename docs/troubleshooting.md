@@ -39,6 +39,9 @@
   with `start-hyprland --path`.
 - For pinch zoom/rotate, `wsf doctor` should report
   `hyprland gesture preload: active`.
+- Package installs provide a `Hyprland (WSF gestures)` session. Select it in
+  the greeter if you want pinch zoom/rotate tuning without editing greetd or
+  another login manager manually.
 - If it is inactive, confirm `wsf-hyprland` is installed and your login/session
   command uses `start-hyprland --path "$(command -v wsf-hyprland)" -- ...`.
 - With tuigreet, `--remember-session` overrides `--cmd` after a session has been

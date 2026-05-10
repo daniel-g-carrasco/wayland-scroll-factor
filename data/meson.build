@@ -12,6 +12,17 @@ install_data(
   install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'applications')
 )
 
+hyprland_session_file = configure_file(
+  input: 'wayland-scroll-factor-hyprland.desktop.in',
+  output: 'wayland-scroll-factor-hyprland.desktop',
+  configuration: desktop_conf
+)
+
+install_data(
+  hyprland_session_file,
+  install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'wayland-sessions')
+)
+
 install_data(
   'io.github.danielgrasso.WaylandScrollFactor.metainfo.xml',
   install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'metainfo')

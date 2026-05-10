@@ -31,3 +31,12 @@ configure_file(
   install_dir: join_paths(get_option('prefix'), get_option('bindir')),
   install_mode: 'rwxr-xr-x'
 )
+
+configure_file(
+  input: 'wsf-start-hyprland.in',
+  output: 'wsf-start-hyprland',
+  configuration: hyprland_shim_conf,
+  install: true,
+  install_dir: join_paths(get_option('prefix'), get_option('bindir')),
+  install_mode: 'rwxr-xr-x'
+)
