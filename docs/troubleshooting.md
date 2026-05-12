@@ -4,6 +4,7 @@
 
 - `./build/tools/wsf set 0.35`
 - `./build/tools/wsf enable`
+- `./build/tools/wsf repair`
 - Log out and log back in (GNOME Wayland does not support "Alt+F2 r").
 - `./build/tools/wsf status` and `./build/tools/wsf doctor`
 - Test vertical + horizontal scrolling in GNOME apps (Files, Settings) and in a browser.
@@ -21,7 +22,7 @@
 - Verify the guard rail is not too strict: only `gnome-shell` is targeted.
 - Ensure you logged out and logged back in after enabling/disabling.
 - If `wsf doctor` says `environment.d` is present but `systemd --user` did not pick it up, run:
-  `systemctl --user daemon-reexec`
+  `wsf repair`
   Then log out and log back in.
 - If `wsf doctor` says `systemd --user` is ready but `gnome-shell` has not loaded WSF yet, log out and log back in again. If that still fails on your distro, reboot once.
 - For pinch issues, check `wsf doctor` for "pinch hooks" symbol availability.

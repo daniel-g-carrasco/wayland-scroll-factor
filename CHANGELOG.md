@@ -10,12 +10,20 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 - Hyprland: install an optional `Hyprland (WSF gestures)` Wayland session and a
   `wsf-start-hyprland` launcher so users can enable gesture preload from the
   greeter without editing login-manager configuration.
+- `wsf repair` command to rewrite the per-user preload environment file when
+  it is missing, commented out, or pointing at the wrong library, reload the
+  user manager, and report whether the remaining activation step is a GNOME
+  logout/login.
 
 ### Fixed
 - GUI: copying diagnostics now uses GTK4 clipboard content providers instead of
   the removed `Gdk.Clipboard.set_text()` API.
 - GUI: avoid requesting a zero-height window minimum, which could trigger
   pixman invalid-rectangle warnings on some GTK/libadwaita stacks.
+- User-manager diagnostics now read `systemctl --user show-environment`
+  portably and filter the returned environment in WSF, instead of passing an
+  unsupported variable argument on systems whose `systemctl` only accepts the
+  no-argument form.
 
 ## [0.3.0] - 2026-05-09
 
