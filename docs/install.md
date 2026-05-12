@@ -86,6 +86,9 @@ Then log out and log back in (or reboot).
 
 Notes:
 - `wsf enable` tries `systemctl --user daemon-reexec` automatically so the user manager reloads `~/.config/environment.d`.
+- `wsf repair` can rewrite the generated environment file if it is missing,
+  commented out, or pointing at the wrong library, then reload the user
+  manager and tell you whether GNOME still needs a logout/login.
 - Once WSF is active in `gnome-shell`, later `wsf set ...` changes are re-read
   by the preload on handled gesture events. They should not require another
   logout, but test with a new gesture after changing values.

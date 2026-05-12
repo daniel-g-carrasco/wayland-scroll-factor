@@ -114,6 +114,13 @@ wsf enable
 
 Then log out and log back in.
 
+If diagnostics show the generated environment file is missing, commented out,
+or not loaded by the user manager, run:
+
+```bash
+wsf repair
+```
+
 Disable:
 
 ```bash
@@ -225,6 +232,7 @@ wsf set --pinch-zoom <factor>
 wsf set --pinch-rotate <factor>
 wsf apply
 wsf enable
+wsf repair
 wsf disable
 wsf status
 wsf status --json
