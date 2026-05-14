@@ -19,6 +19,7 @@ static bool wsf_run_command(const char *cmd, char *buf, size_t len);
 static bool wsf_run_command_ok(const char *cmd);
 
 #define WSF_HYPRLAND_SCROLL_FACTOR_MAX 2.0
+#define WSF_ENV_VALUE_MAX 32768
 
 struct wsf_runtime_state {
 	bool user_manager_ld_preload_present;
@@ -37,9 +38,9 @@ struct wsf_runtime_state {
 	bool hyprland_defer_prune_present;
 	pid_t gnome_shell_pid;
 	pid_t hyprland_pid;
-	char user_manager_ld_preload[512];
-	char gnome_shell_ld_preload[512];
-	char hyprland_ld_preload[512];
+	char user_manager_ld_preload[WSF_ENV_VALUE_MAX];
+	char gnome_shell_ld_preload[WSF_ENV_VALUE_MAX];
+	char hyprland_ld_preload[WSF_ENV_VALUE_MAX];
 	char hyprland_targets[256];
 	char hyprland_gestures_only[64];
 	char hyprland_gestures[64];
@@ -101,6 +102,30 @@ static const char *wsf_path_basename(const char *path) {
 	return slash + 1;
 }
 
+static bool wsf_paths_equivalent(const char *left, const char *right) {
+	char left_real[PATH_MAX];
+	char right_real[PATH_MAX];
+
+	if (left == NULL || right == NULL || left[0] == '\0' || right[0] == '\0') {
+		return false;
+	}
+
+	if (strcmp(left, right) == 0) {
+		return true;
+	}
+
+	if (realpath(left, left_real) == NULL || realpath(right, right_real) == NULL) {
+		return false;
+	}
+
+	return strcmp(left_real, right_real) == 0;
+}
+
+static bool wsf_preload_token_is_wsf_library(const char *token) {
+	return token != NULL &&
+		strcmp(wsf_path_basename(token), "libwsf_preload.so") == 0;
+}
+
 static bool wsf_preload_list_contains(const char *list, const char *lib_path) {
 	char *copy = NULL;
 	char *cursor = NULL;
@@ -136,8 +161,7 @@ static bool wsf_preload_list_contains(const char *list, const char *lib_path) {
 			cursor++;
 		}
 
-		if (strcmp(token, lib_path) == 0 ||
-			strcmp(wsf_path_basename(token), "libwsf_preload.so") == 0) {
+		if (wsf_paths_equivalent(token, lib_path)) {
 			found = true;
 			break;
 		}
@@ -147,12 +171,168 @@ static bool wsf_preload_list_contains(const char *list, const char *lib_path) {
 	return found;
 }
 
+static bool wsf_preload_append_token(char *buf, size_t len, const char *token) {
+	size_t used = 0;
+	int written = 0;
+
+	if (buf == NULL || len == 0 || token == NULL || token[0] == '\0') {
+		return false;
+	}
+
+	used = strlen(buf);
+	if (used >= len) {
+		return false;
+	}
+	written = snprintf(
+		buf + used,
+		len - used,
+		"%s%s",
+		used > 0 ? ":" : "",
+		token
+	);
+
+	return written > 0 && (size_t) written < len - used;
+}
+
+static bool wsf_preload_list_without_wsf(
+	const char *list,
+	char *buf,
+	size_t len
+) {
+	char *copy = NULL;
+	char *cursor = NULL;
+	bool ok = true;
+
+	if (buf == NULL || len == 0) {
+		return false;
+	}
+
+	buf[0] = '\0';
+	if (list == NULL || list[0] == '\0') {
+		return true;
+	}
+
+	copy = strdup(list);
+	if (copy == NULL) {
+		return false;
+	}
+
+	cursor = copy;
+	while (*cursor != '\0') {
+		char *token = NULL;
+
+		while (*cursor == ':' || isspace((unsigned char) *cursor)) {
+			cursor++;
+		}
+		if (*cursor == '\0') {
+			break;
+		}
+
+		token = cursor;
+		while (*cursor != '\0' && *cursor != ':' &&
+			!isspace((unsigned char) *cursor)) {
+			cursor++;
+		}
+		if (*cursor != '\0') {
+			*cursor = '\0';
+			cursor++;
+		}
+
+		if (wsf_preload_token_is_wsf_library(token)) {
+			continue;
+		}
+		if (!wsf_preload_append_token(buf, len, token)) {
+			ok = false;
+			break;
+		}
+	}
+
+	free(copy);
+	return ok;
+}
+
 static bool wsf_env_file_path(char *buf, size_t len) {
 	return wsf_build_path(buf, len, ".config/environment.d/wayland-scroll-factor.conf");
 }
 
 static bool wsf_env_dir_path(char *buf, size_t len) {
 	return wsf_build_path(buf, len, ".config/environment.d");
+}
+
+static bool wsf_env_file_effective_value(
+	const char *env_path,
+	const char *key,
+	char **out_value
+) {
+	FILE *file = NULL;
+	char *line = NULL;
+	size_t line_cap = 0;
+	ssize_t line_len = 0;
+	size_t key_len = 0;
+	bool found = false;
+
+	if (out_value != NULL) {
+		*out_value = NULL;
+	}
+	if (env_path == NULL || key == NULL || key[0] == '\0' || out_value == NULL) {
+		return false;
+	}
+
+	file = fopen(env_path, "r");
+	if (file == NULL) {
+		return false;
+	}
+
+	key_len = strlen(key);
+	while ((line_len = getline(&line, &line_cap, file)) >= 0) {
+		char *cursor = line;
+		char *value = NULL;
+		char *copy = NULL;
+
+		(void) line_len;
+		while (isspace((unsigned char) *cursor)) {
+			cursor++;
+		}
+		if (*cursor == '#' || *cursor == '\0') {
+			continue;
+		}
+		cursor[strcspn(cursor, "\r\n")] = '\0';
+		if (strncmp(cursor, key, key_len) != 0 || cursor[key_len] != '=') {
+			continue;
+		}
+
+		value = cursor + key_len + 1;
+		copy = strdup(value);
+		if (copy == NULL) {
+			free(line);
+			fclose(file);
+			return false;
+		}
+
+		free(*out_value);
+		*out_value = copy;
+		found = true;
+	}
+
+	free(line);
+	fclose(file);
+	return found;
+}
+
+static bool wsf_env_file_preload_matches(
+	const char *env_path,
+	const char *lib_path
+) {
+	char *effective = NULL;
+	bool matches = false;
+
+	if (!wsf_env_file_effective_value(env_path, "LD_PRELOAD", &effective)) {
+		return false;
+	}
+
+	matches = wsf_preload_list_contains(effective, lib_path);
+	free(effective);
+	return matches;
 }
 
 static bool wsf_user_manager_reload(void) {
@@ -217,6 +397,139 @@ static bool wsf_ensure_env_dir(void) {
 
 	if (wsf_mkdir(env_dir) != 0) {
 		return false;
+	}
+
+	return true;
+}
+
+static bool wsf_write_env_file(
+	const char *env_path,
+	const char *preload_value
+) {
+	FILE *file = NULL;
+
+	if (env_path == NULL || preload_value == NULL || preload_value[0] == '\0') {
+		return false;
+	}
+
+	file = fopen(env_path, "w");
+	if (file == NULL) {
+		return false;
+	}
+
+	fprintf(file, "# Generated by wsf\n");
+	fprintf(file, "LD_PRELOAD=%s\n", preload_value);
+	if (fclose(file) != 0) {
+		return false;
+	}
+
+	return true;
+}
+
+static bool wsf_repaired_preload_value(
+	const char *existing_preload,
+	const char *lib_path,
+	char *buf,
+	size_t len
+) {
+	char preserved[WSF_ENV_VALUE_MAX];
+
+	if (lib_path == NULL || lib_path[0] == '\0' || buf == NULL || len == 0) {
+		return false;
+	}
+
+	buf[0] = '\0';
+	preserved[0] = '\0';
+
+	if (!wsf_preload_append_token(buf, len, lib_path)) {
+		return false;
+	}
+	if (!wsf_preload_list_without_wsf(existing_preload, preserved, sizeof(preserved))) {
+		return false;
+	}
+	if (preserved[0] == '\0') {
+		return true;
+	}
+
+	return wsf_preload_append_token(buf, len, preserved);
+}
+
+static bool wsf_repair_preload_setup(
+	const char *env_path,
+	const char *lib_path,
+	bool verbose,
+	bool *out_wrote_env
+) {
+	char *effective_preload = NULL;
+	char repaired_preload[WSF_ENV_VALUE_MAX];
+	bool env_matches = false;
+	bool wrote_env = false;
+	struct wsf_runtime_state runtime;
+
+	if (out_wrote_env != NULL) {
+		*out_wrote_env = false;
+	}
+
+	env_matches = wsf_env_file_preload_matches(env_path, lib_path);
+	if (!env_matches) {
+		if (!wsf_ensure_env_dir()) {
+			if (verbose) {
+				fprintf(stderr, "repair: failed to create environment.d directory.\n");
+			}
+			return false;
+		}
+
+		(void) wsf_env_file_effective_value(
+			env_path,
+			"LD_PRELOAD",
+			&effective_preload
+		);
+		if (!wsf_repaired_preload_value(
+			effective_preload,
+			lib_path,
+			repaired_preload,
+			sizeof(repaired_preload))) {
+			free(effective_preload);
+			if (verbose) {
+				fprintf(stderr, "repair: failed to build repaired LD_PRELOAD value.\n");
+			}
+			return false;
+		}
+		free(effective_preload);
+
+		if (!wsf_write_env_file(env_path, repaired_preload)) {
+			if (verbose) {
+				fprintf(
+					stderr,
+					"repair: failed to write %s: %s\n",
+					env_path,
+					strerror(errno)
+				);
+			}
+			return false;
+		}
+		wrote_env = true;
+		if (out_wrote_env != NULL) {
+			*out_wrote_env = true;
+		}
+		if (verbose) {
+			printf("repair: wrote %s\n", env_path);
+		}
+	} else if (verbose) {
+		printf("repair: environment.d already points at the installed WSF library\n");
+	}
+
+	wsf_runtime_state_collect(&runtime, lib_path);
+	if (wrote_env || !runtime.user_manager_matches) {
+		if (!wsf_user_manager_reload()) {
+			if (verbose) {
+				printf("repair: could not reload systemd --user with daemon-reexec\n");
+			}
+			return false;
+		}
+		if (verbose) {
+			printf("repair: reloaded systemd --user environment\n");
+		}
 	}
 
 	return true;
@@ -367,6 +680,7 @@ static void wsf_print_usage(const char *prog) {
 	fprintf(stderr, "  get [--json]   Print effective factors\n");
 	fprintf(stderr, "  apply          Apply supported live compositor backends\n");
 	fprintf(stderr, "  enable         Enable preload via environment.d\n");
+	fprintf(stderr, "  repair         Repair preload setup and report remaining session work\n");
 	fprintf(stderr, "  disable        Disable preload via environment.d\n");
 	fprintf(stderr, "  status [--json] Show current status\n");
 	fprintf(stderr, "  doctor [--json] Print diagnostics\n");
@@ -602,7 +916,6 @@ static int wsf_cmd_get(bool json) {
 static int wsf_cmd_enable(void) {
 	char env_path[512];
 	char lib_path[512];
-	FILE *file = NULL;
 	const char *existing = getenv("LD_PRELOAD");
 	bool manager_reloaded = false;
 
@@ -629,15 +942,11 @@ static int wsf_cmd_enable(void) {
 		return 1;
 	}
 
-	file = fopen(env_path, "w");
-	if (file == NULL) {
+	if (!wsf_write_env_file(env_path, lib_path)) {
 		fprintf(stderr, "Failed to write %s: %s\n", env_path, strerror(errno));
 		return 1;
 	}
 
-	fprintf(file, "# Generated by wsf enable\n");
-	fprintf(file, "LD_PRELOAD=%s\n", lib_path);
-	fclose(file);
 	manager_reloaded = wsf_user_manager_reload();
 
 	if (existing != NULL && existing[0] != '\0') {
@@ -652,8 +961,84 @@ static int wsf_cmd_enable(void) {
 		printf("enabled (user manager reloaded; log out/in required)\n");
 	} else {
 		printf("enabled (log out/in required)\n");
-		printf("hint: if it does not activate after login, run `systemctl --user daemon-reexec` and try again, or reboot.\n");
+		printf("hint: if it does not activate after login, run `wsf repair` and try again, or reboot.\n");
 	}
+	return 0;
+}
+
+static int wsf_cmd_repair(void) {
+	char env_path[512];
+	char lib_path[512];
+	struct wsf_runtime_state runtime;
+	struct wsf_hyprland_state hyprland;
+	bool env_present = false;
+	bool lib_present = false;
+	bool wrote_env = false;
+
+	if (!wsf_env_file_path(env_path, sizeof(env_path))) {
+		fprintf(stderr, "Failed to resolve environment.d path.\n");
+		return 1;
+	}
+
+	if (!wsf_lib_path(lib_path, sizeof(lib_path))) {
+		fprintf(stderr, "Failed to resolve library path.\n");
+		return 1;
+	}
+
+	env_present = access(env_path, F_OK) == 0;
+	lib_present = access(lib_path, R_OK) == 0;
+	if (!lib_present) {
+		fprintf(stderr, "repair: library not found: %s\n", lib_path);
+		fprintf(stderr, "repair: install wsf or set WSF_LIB_PATH, then run `wsf repair` again.\n");
+		return 1;
+	}
+
+	if (!wsf_repair_preload_setup(env_path, lib_path, true, &wrote_env)) {
+		return 1;
+	}
+
+	wsf_runtime_state_collect(&runtime, lib_path);
+	wsf_hyprland_state_collect(&hyprland);
+
+	if (hyprland.running) {
+		int applied = wsf_cmd_apply();
+
+		if (applied != 0) {
+			return applied;
+		}
+		if (!runtime.hyprland_library_mapped) {
+			printf("repair: Hyprland scroll was handled through the native backend.\n");
+			printf("repair: restart Hyprland through wsf-hyprland only if you need pinch zoom/rotate tuning.\n");
+		}
+		return 0;
+	}
+
+	if (!runtime.user_manager_matches) {
+		printf(
+			"repair: environment file is %s, but systemd --user still does not expose the installed WSF library.\n",
+			env_present ? "present" : "newly written"
+		);
+		printf("repair: try logging out and back in; if it still fails, reboot once.\n");
+		return 1;
+	}
+
+	if (runtime.gnome_shell_found && runtime.gnome_shell_library_mapped) {
+		printf("repair: GNOME Shell has WSF loaded; factor changes should reload on handled gestures.\n");
+		return 0;
+	}
+
+	if (runtime.gnome_shell_found) {
+		printf("repair: systemd --user is ready, but the running GNOME Shell has not loaded WSF.\n");
+		printf("repair: this cannot be repaired safely inside the current GNOME Wayland session.\n");
+		printf("repair: log out and back in, then run `wsf status` and look for `gnome-shell library mapped: yes`.\n");
+		return 0;
+	}
+
+	printf(
+		"repair: preload setup is ready for the next GNOME session%s.\n",
+		wrote_env ? " after rewriting environment.d" : ""
+	);
+	printf("repair: log in to a GNOME Wayland session and run `wsf status` to verify activation.\n");
 	return 0;
 }
 
@@ -1067,10 +1452,10 @@ static int wsf_cmd_status(bool json) {
 	}
 	if (!hyprland.running && env_present && !runtime.user_manager_matches &&
 		!runtime.gnome_shell_library_mapped) {
-		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
+		printf("hint: run `wsf repair`, then log out/in.\n");
 	}
 	if (!hyprland.running && runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
-		printf("hint: GNOME Shell has not loaded WSF yet; log out/in, and if that still fails, reboot.\n");
+		printf("hint: GNOME Shell has not loaded WSF yet; `wsf repair` can verify setup, then log out/in.\n");
 	}
 	return 0;
 }
@@ -1115,37 +1500,40 @@ static bool wsf_systemd_user_env_value(
 	char *buf,
 	size_t len
 ) {
-	char cmd[256];
-	char raw[512];
+	FILE *pipe = NULL;
+	char *line = NULL;
+	size_t line_cap = 0;
 	size_t key_len = 0;
+	bool found = false;
 
 	if (key == NULL || key[0] == '\0' || buf == NULL || len == 0) {
 		return false;
 	}
 
+	buf[0] = '\0';
 	key_len = strlen(key);
-	if (snprintf(
-		cmd,
-		sizeof(cmd),
-		"systemctl --user show-environment %s 2>/dev/null",
-		key
-	) >= (int) sizeof(cmd)) {
+	pipe = popen("systemctl --user show-environment 2>/dev/null", "r");
+	if (pipe == NULL) {
 		return false;
 	}
 
-	if (!wsf_run_command(cmd, raw, sizeof(raw))) {
-		return false;
+	while (getline(&line, &line_cap, pipe) >= 0) {
+		line[strcspn(line, "\r\n")] = '\0';
+		if (strncmp(line, key, key_len) != 0 || line[key_len] != '=') {
+			continue;
+		}
+		if (snprintf(buf, len, "%s", line + key_len + 1) >= (int) len) {
+			buf[0] = '\0';
+			free(line);
+			pclose(pipe);
+			return false;
+		}
+		found = true;
 	}
 
-	if (strncmp(raw, key, key_len) != 0 || raw[key_len] != '=') {
-		return false;
-	}
-
-	if (snprintf(buf, len, "%s", raw + key_len + 1) >= (int) len) {
-		return false;
-	}
-
-	return true;
+	free(line);
+	pclose(pipe);
+	return found;
 }
 
 static bool wsf_read_pid_comm(pid_t pid, char *buf, size_t len) {
@@ -1851,11 +2239,11 @@ static int wsf_cmd_doctor(bool json) {
 	if (!hyprland.running && env_present && !runtime.user_manager_matches &&
 		!runtime.gnome_shell_library_mapped) {
 		printf("hint: environment.d exists but systemd --user has not picked it up yet.\n");
-		printf("hint: run `systemctl --user daemon-reexec`, then log out/in.\n");
+		printf("hint: run `wsf repair`, then log out/in.\n");
 	}
 	if (!hyprland.running && runtime.user_manager_matches && !runtime.gnome_shell_library_mapped) {
 		printf("hint: systemd --user is ready but GNOME Shell has not loaded WSF yet.\n");
-		printf("hint: log out/in; if that still fails on your distro, reboot once.\n");
+		printf("hint: `wsf repair` can verify setup; then log out/in, or reboot once if your distro keeps the old session environment.\n");
 	}
 	if (runtime.gnome_shell_library_mapped &&
 		!runtime.gnome_shell_ld_preload_present) {
@@ -1912,9 +2300,24 @@ int main(int argc, char **argv) {
 		return wsf_cmd_apply();
 	}
 	if (strcmp(cmd, "enable") == 0) {
+		if (argc != 2) {
+			fprintf(stderr, "Command enable does not accept arguments.\n");
+			return 1;
+		}
 		return wsf_cmd_enable();
 	}
+	if (strcmp(cmd, "repair") == 0) {
+		if (argc != 2) {
+			fprintf(stderr, "Command repair does not accept arguments.\n");
+			return 1;
+		}
+		return wsf_cmd_repair();
+	}
 	if (strcmp(cmd, "disable") == 0) {
+		if (argc != 2) {
+			fprintf(stderr, "Command disable does not accept arguments.\n");
+			return 1;
+		}
 		return wsf_cmd_disable();
 	}
 	if (strcmp(cmd, "status") == 0) {

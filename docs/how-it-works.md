@@ -86,6 +86,19 @@ locale. This matters because GNOME Shell may run with a locale that uses a
 comma decimal separator, while the WSF config format intentionally uses ASCII
 decimal values such as `0.0500`.
 
+If the generated environment file is missing, commented out, points to an old
+WSF install path, or has not been picked up by `systemd --user`, use:
+
+```bash
+wsf repair
+```
+
+`wsf repair` computes the effective final `LD_PRELOAD=` assignment, removes
+stale WSF preload entries, preserves unrelated preload entries, writes the exact
+installed `libwsf_preload.so` path, and reloads the user manager. It does not
+hot-patch a running GNOME Shell process; logout/login is still required if
+`gnome-shell` started without WSF.
+
 ## Hyprland Scroll Flow
 
 Hyprland exposes a native touchpad scroll setting:

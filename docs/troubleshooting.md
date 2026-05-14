@@ -4,6 +4,7 @@
 
 - `./build/tools/wsf set 0.35`
 - `./build/tools/wsf enable`
+- `./build/tools/wsf repair` if `status` or `doctor` reports a stale preload setup
 - Log out and log back in (GNOME Wayland does not support "Alt+F2 r").
 - `./build/tools/wsf status` and `./build/tools/wsf doctor`
 - Test vertical + horizontal scrolling in GNOME apps (Files, Settings) and in a browser.
@@ -21,9 +22,11 @@
 - Verify the guard rail is not too strict: only `gnome-shell` is targeted.
 - Ensure you logged out and logged back in after enabling/disabling.
 - If `wsf doctor` says `environment.d` is present but `systemd --user` did not pick it up, run:
-  `systemctl --user daemon-reexec`
+  `wsf repair`
   Then log out and log back in.
 - If `wsf doctor` says `systemd --user` is ready but `gnome-shell` has not loaded WSF yet, log out and log back in again. If that still fails on your distro, reboot once.
+- If `LD_PRELOAD` points to an old WSF location, `wsf repair` removes stale WSF
+  entries and writes the exact installed `libwsf_preload.so` path.
 - For pinch issues, check `wsf doctor` for "pinch hooks" symbol availability.
 - If using a custom library location, set `WSF_LIB_PATH` before enabling.
 - If a snap app fails to launch, update to a recent WSF version and rerun `wsf doctor`. Current builds remove WSF from child `LD_PRELOAD` after load to avoid inherited-preload problems.

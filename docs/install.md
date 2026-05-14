@@ -86,6 +86,10 @@ Then log out and log back in (or reboot).
 
 Notes:
 - `wsf enable` tries `systemctl --user daemon-reexec` automatically so the user manager reloads `~/.config/environment.d`.
+- If diagnostics show a missing, commented, stale, or unloaded preload setup,
+  run `wsf repair`, then log out and log back in. The repair command rewrites
+  WSF's per-user `environment.d` file with the exact installed library path and
+  preserves unrelated preload entries.
 - Once WSF is active in `gnome-shell`, later `wsf set ...` changes are re-read
   by the preload on handled gesture events. They should not require another
   logout, but test with a new gesture after changing values.
