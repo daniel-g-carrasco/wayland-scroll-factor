@@ -17,6 +17,17 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="0.3.2" date="2026-05-19">
+      <description>
+        <p>Compatibility release for Hyprland 0.55+ Lua configurations.</p>
+        <ul>
+          <li>hyprland: apply live scroll factors through hyprctl eval when the Lua config manager is active</li>
+          <li>hyprland: verify the live touchpad scroll factor after runtime apply</li>
+          <li>hyprland: install an optional Lua helper for reload-safe scroll persistence</li>
+          <li>diagnostics: report whether Hyprland scroll uses keyword or lua-eval</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-05-09">
       <description>
         <p>Stable release with GNOME Wayland support and new Hyprland backend support.</p>

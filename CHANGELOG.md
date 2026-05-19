@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [0.3.2] - 2026-05-19
+
+### Added
+- Hyprland 0.55+ Lua config support for live scroll application. WSF now
+  detects when the Lua config manager is active and applies
+  `input:touchpad:scroll_factor` through `hyprctl eval 'hl.config(...)'`.
+- Optional generic Hyprland Lua helper at
+  `data/hyprland/wsf.lua`, installed as
+  `/usr/share/wayland-scroll-factor/hyprland/wsf.lua` for system packages.
+  It can be loaded from `hyprland.lua` to reapply WSF scroll settings after
+  Lua config reloads.
+
+### Changed
+- `wsf apply` now verifies the live Hyprland scroll value after applying a
+  factor, so it no longer reports success when Hyprland ignores the runtime
+  update.
+- `wsf status` and `wsf doctor` now report the Hyprland scroll apply method:
+  `keyword` for legacy/hyprlang configs or `lua-eval` for Lua configs.
+
 ## [0.3.1] - 2026-05-14
 
 ### Added
