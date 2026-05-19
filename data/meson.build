@@ -28,6 +28,11 @@ install_data(
   install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'metainfo')
 )
 
+install_data(
+  'hyprland/wsf.lua',
+  install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'wayland-scroll-factor', 'hyprland')
+)
+
 foreach size : ['128x128', '256x256', '512x512']
   install_data(
     'icons/hicolor/' + size + '/apps/io.github.danielgrasso.WaylandScrollFactor.png',

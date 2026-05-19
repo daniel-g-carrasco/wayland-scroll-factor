@@ -93,7 +93,10 @@ Notes:
 - Once WSF is active in `gnome-shell`, later `wsf set ...` changes are re-read
   by the preload on handled gesture events. They should not require another
   logout, but test with a new gesture after changing values.
-- On Hyprland, scroll factor changes apply live through `hyprctl` when a running Hyprland session is detected. Use `wsf apply` to reapply the saved config.
+- On Hyprland, scroll factor changes apply live through `hyprctl` when a
+  running Hyprland session is detected. WSF uses `hyprctl keyword` on legacy
+  configs and `hyprctl eval` on Hyprland 0.55+ Lua configs. Use `wsf apply` to
+  reapply the saved config.
 - To persist Hyprland live settings across compositor restarts, keep static `touchpad.scroll_factor` commented out and add the documented `wsf apply` autostart command to your Hyprland startup config.
 
 ## Config file
@@ -218,6 +221,24 @@ exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x
 
 Keep any static Hyprland `scroll_factor = ...` line commented out so reloads do
 not overwrite the WSF value.
+
+For Hyprland 0.55+ Lua configs, package installs also provide:
+
+```
+/usr/share/wayland-scroll-factor/hyprland/wsf.lua
+```
+
+Load it from `hyprland.lua` if you want WSF to reapply scroll after Lua reloads:
+
+```lua
+dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+For per-user installs from `./scripts/install.sh`, use:
+
+```lua
+dofile(os.getenv("HOME") .. "/.local/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
 
 ## Disable
 

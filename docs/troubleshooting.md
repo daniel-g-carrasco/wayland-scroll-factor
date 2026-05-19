@@ -36,8 +36,14 @@
 - Run `wsf status` and confirm it reports `hyprland: running`.
 - Run `hyprctl getoption input:touchpad:scroll_factor` to inspect the live compositor value.
 - Run `wsf set 0.35` or `wsf apply`; both should update the live Hyprland scroll factor without logout.
+- On Hyprland 0.55+ Lua configs, `wsf status` / `wsf doctor` should report
+  `hyprland scroll apply method: lua-eval`. WSF falls back from
+  `hyprctl keyword` to `hyprctl eval` automatically.
 - If vertical and horizontal factors differ, remember Hyprland currently has one native touchpad scroll factor for both axes.
-- If the value changes but does not persist after restarting Hyprland, comment out any static `touchpad.scroll_factor` line and add the documented `wsf apply` autostart command to your Hyprland startup config.
+- If the value changes but does not persist after restarting or reloading
+  Hyprland, comment out any static `touchpad.scroll_factor` line and add the
+  documented `wsf apply` autostart command. For Lua configs, load
+  `/usr/share/wayland-scroll-factor/hyprland/wsf.lua` from `hyprland.lua`.
 - Pinch zoom/rotate tuning requires launching Hyprland through `wsf-hyprland`
   with `start-hyprland --path`.
 - For pinch zoom/rotate, `wsf doctor` should report

@@ -107,7 +107,14 @@ Hyprland exposes a native touchpad scroll setting:
 hyprctl keyword input:touchpad:scroll_factor 0.35
 ```
 
-WSF uses that native backend for scroll. This means:
+On Hyprland 0.55+ Lua configurations, the equivalent runtime call is:
+
+```bash
+hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = 0.35 } } })'
+```
+
+WSF auto-selects the correct native runtime path for scroll and verifies the
+result with `hyprctl getoption input:touchpad:scroll_factor`. This means:
 
 - no preload is needed for scroll;
 - changes apply live;
@@ -124,11 +131,23 @@ writes the WSF config and applies:
 
 ```bash
 hyprctl keyword input:touchpad:scroll_factor 0.35
+# or, with the Lua config manager:
+hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = 0.35 } } })'
 ```
 
 `wsf apply` reapplies the saved config to the running Hyprland session. This is
 useful at compositor startup because static Hyprland config reloads can
 overwrite runtime settings.
+
+Package installs also provide an optional Lua helper:
+
+```lua
+dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+The helper calls `wsf apply` when loaded and after `hyprland.start` /
+`config.reloaded`, making scroll persistence reload-safe on Lua configurations
+without requiring distro-specific code.
 
 ## Hyprland Pinch Zoom/Rotate Flow
 

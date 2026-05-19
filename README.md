@@ -140,12 +140,18 @@ another logout for factor changes, but start a new gesture when testing.
 
 ## Hyprland
 
-Hyprland uses the native backend.
+Hyprland uses the native backend for scroll.
 
-WSF applies:
+On legacy/hyprlang configurations, WSF applies:
 
 ```bash
 hyprctl keyword input:touchpad:scroll_factor <factor>
+```
+
+On Hyprland 0.55+ Lua configurations, WSF automatically falls back to:
+
+```bash
+hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = <factor> } } })'
 ```
 
 So scroll changes apply immediately:
@@ -209,13 +215,29 @@ otherwise executes the original session command.
 
 Hyprland runtime settings can be overwritten by static config during reload/login. If WSF should manage scroll speed, remove or comment out any static `touchpad.scroll_factor` / `input:touchpad:scroll_factor` value from your Hyprland config, or keep it intentionally in sync with WSF.
 
-Add a startup command in your Hyprland autostart config:
+For legacy/hyprlang configs, add a startup command in your Hyprland autostart
+config:
 
 ```ini
 exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x "$HOME/.local/bin/wsf" ]; then "$HOME/.local/bin/wsf" apply; fi'
 ```
 
-This reapplies the saved WSF value when Hyprland starts.
+For Hyprland 0.55+ Lua configs, package installs provide a generic optional
+module:
+
+```lua
+dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+For per-user installs from `./scripts/install.sh`, use:
+
+```lua
+dofile(os.getenv("HOME") .. "/.local/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+That module calls `wsf apply` when loaded and after `hyprland.start` /
+`config.reloaded`, so the saved WSF value is restored after reloads without
+hardcoding distro-specific paths.
 
 More details: [`docs/hyprland.md`](docs/hyprland.md)
 

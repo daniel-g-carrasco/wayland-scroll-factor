@@ -21,6 +21,12 @@ static bool wsf_run_command_ok(const char *cmd);
 #define WSF_HYPRLAND_SCROLL_FACTOR_MAX 2.0
 #define WSF_ENV_VALUE_MAX 32768
 
+enum wsf_hyprland_scroll_apply_method {
+	WSF_HYPRLAND_SCROLL_APPLY_NONE = 0,
+	WSF_HYPRLAND_SCROLL_APPLY_KEYWORD,
+	WSF_HYPRLAND_SCROLL_APPLY_EVAL
+};
+
 struct wsf_runtime_state {
 	bool user_manager_ld_preload_present;
 	bool user_manager_matches;
@@ -52,7 +58,9 @@ struct wsf_hyprland_state {
 	bool hyprctl_found;
 	bool running;
 	bool touchpad_scroll_found;
+	bool lua_eval_supported;
 	double touchpad_scroll_factor;
+	enum wsf_hyprland_scroll_apply_method scroll_apply_method;
 	char version[256];
 };
 
@@ -578,6 +586,41 @@ static bool wsf_hyprland_get_touchpad_scroll_factor(double *out_factor) {
 	return true;
 }
 
+static bool wsf_hyprland_factor_close(double left, double right) {
+	double diff = left - right;
+
+	if (diff < 0.0) {
+		diff = -diff;
+	}
+
+	return diff <= 0.0005;
+}
+
+static const char *wsf_hyprland_scroll_apply_method_name(
+	enum wsf_hyprland_scroll_apply_method method
+) {
+	switch (method) {
+	case WSF_HYPRLAND_SCROLL_APPLY_KEYWORD:
+		return "keyword";
+	case WSF_HYPRLAND_SCROLL_APPLY_EVAL:
+		return "lua-eval";
+	case WSF_HYPRLAND_SCROLL_APPLY_NONE:
+	default:
+		return "none";
+	}
+}
+
+static bool wsf_hyprland_lua_eval_supported(void) {
+	return wsf_run_command_ok(
+		"out=$(hyprctl eval 'hl.config({})' 2>&1); "
+		"rc=$?; "
+		"case \"$out\" in "
+		"*'eval is only supported'*|*'unknown request'*|*'not supported'*) exit 1;; "
+		"esac; "
+		"exit \"$rc\""
+	);
+}
+
 static void wsf_hyprland_state_collect(struct wsf_hyprland_state *state) {
 	if (state == NULL) {
 		return;
@@ -595,6 +638,10 @@ static void wsf_hyprland_state_collect(struct wsf_hyprland_state *state) {
 		state->touchpad_scroll_found = wsf_hyprland_get_touchpad_scroll_factor(
 			&state->touchpad_scroll_factor
 		);
+		state->lua_eval_supported = wsf_hyprland_lua_eval_supported();
+		state->scroll_apply_method = state->lua_eval_supported ?
+			WSF_HYPRLAND_SCROLL_APPLY_EVAL :
+			WSF_HYPRLAND_SCROLL_APPLY_KEYWORD;
 	}
 }
 
@@ -613,11 +660,76 @@ static double wsf_hyprland_clamp_scroll_factor(double factor, bool *clamped) {
 	return factor;
 }
 
+static bool wsf_hyprland_apply_touchpad_scroll_keyword(double factor) {
+	char cmd[256];
+
+	if (snprintf(
+		cmd,
+		sizeof(cmd),
+		"hyprctl keyword input:touchpad:scroll_factor %.4f >/dev/null 2>&1",
+		factor
+	) >= (int) sizeof(cmd)) {
+		return false;
+	}
+
+	return wsf_run_command_ok(cmd);
+}
+
+static bool wsf_hyprland_apply_touchpad_scroll_eval(double factor) {
+	char cmd[512];
+
+	if (snprintf(
+		cmd,
+		sizeof(cmd),
+		"hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = %.4f } } })' >/dev/null 2>&1",
+		factor
+	) >= (int) sizeof(cmd)) {
+		return false;
+	}
+
+	return wsf_run_command_ok(cmd);
+}
+
+static bool wsf_hyprland_apply_touchpad_scroll_with_method(
+	double factor,
+	enum wsf_hyprland_scroll_apply_method method
+) {
+	double live_factor = 0.0;
+	bool command_ok = false;
+
+	switch (method) {
+	case WSF_HYPRLAND_SCROLL_APPLY_KEYWORD:
+		command_ok = wsf_hyprland_apply_touchpad_scroll_keyword(factor);
+		break;
+	case WSF_HYPRLAND_SCROLL_APPLY_EVAL:
+		command_ok = wsf_hyprland_apply_touchpad_scroll_eval(factor);
+		break;
+	case WSF_HYPRLAND_SCROLL_APPLY_NONE:
+	default:
+		return false;
+	}
+
+	if (!command_ok) {
+		return false;
+	}
+
+	if (!wsf_hyprland_get_touchpad_scroll_factor(&live_factor)) {
+		return false;
+	}
+
+	return wsf_hyprland_factor_close(live_factor, factor);
+}
+
 static int wsf_hyprland_apply_touchpad_scroll(double factor, bool verbose) {
 	struct wsf_hyprland_state state;
-	char cmd[256];
 	double applied_factor = 0.0;
 	bool clamped = false;
+	enum wsf_hyprland_scroll_apply_method preferred =
+		WSF_HYPRLAND_SCROLL_APPLY_NONE;
+	enum wsf_hyprland_scroll_apply_method fallback =
+		WSF_HYPRLAND_SCROLL_APPLY_NONE;
+	enum wsf_hyprland_scroll_apply_method used =
+		WSF_HYPRLAND_SCROLL_APPLY_NONE;
 
 	wsf_hyprland_state_collect(&state);
 	if (!state.running) {
@@ -628,28 +740,38 @@ static int wsf_hyprland_apply_touchpad_scroll(double factor, bool verbose) {
 	}
 
 	applied_factor = wsf_hyprland_clamp_scroll_factor(factor, &clamped);
-	if (snprintf(
-		cmd,
-		sizeof(cmd),
-		"hyprctl keyword input:touchpad:scroll_factor %.4f >/dev/null 2>&1",
-		applied_factor
-	) >= (int) sizeof(cmd)) {
-		if (verbose) {
-			fprintf(stderr, "failed to build hyprctl command.\n");
-		}
-		return -1;
+
+	preferred = state.scroll_apply_method;
+	fallback = preferred == WSF_HYPRLAND_SCROLL_APPLY_EVAL ?
+		WSF_HYPRLAND_SCROLL_APPLY_KEYWORD :
+		WSF_HYPRLAND_SCROLL_APPLY_EVAL;
+
+	if (wsf_hyprland_apply_touchpad_scroll_with_method(
+		applied_factor,
+		preferred
+	)) {
+		used = preferred;
+	} else if (wsf_hyprland_apply_touchpad_scroll_with_method(
+		applied_factor,
+		fallback
+	)) {
+		used = fallback;
 	}
 
-	if (!wsf_run_command_ok(cmd)) {
+	if (used == WSF_HYPRLAND_SCROLL_APPLY_NONE) {
 		if (verbose) {
-			fprintf(stderr, "failed to apply Hyprland input:touchpad:scroll_factor via hyprctl.\n");
+			fprintf(
+				stderr,
+				"failed to apply Hyprland input:touchpad:scroll_factor; tried keyword and lua-eval backends.\n"
+			);
 		}
 		return -1;
 	}
 
 	if (verbose) {
 		printf(
-			"hyprland native scroll applied: input:touchpad:scroll_factor=%.4f\n",
+			"hyprland native scroll applied via %s: input:touchpad:scroll_factor=%.4f\n",
+			wsf_hyprland_scroll_apply_method_name(used),
 			applied_factor
 		);
 		if (clamped) {
@@ -1146,6 +1268,12 @@ static void wsf_print_hyprland_json_field(
 		printf("null");
 	}
 	printf(",");
+	printf("\"lua_eval_supported\":%s,", state->lua_eval_supported ? "true" : "false");
+	printf("\"scroll_apply_method\":");
+	wsf_print_json_string(
+		wsf_hyprland_scroll_apply_method_name(state->scroll_apply_method)
+	);
+	printf(",");
 	printf("\"single_touchpad_scroll_factor\":true");
 	printf("}");
 }
@@ -1176,6 +1304,14 @@ static void wsf_print_hyprland_status(
 	}
 
 	if (state->running) {
+		printf(
+			"hyprland config backend: %s\n",
+			state->lua_eval_supported ? "lua" : "legacy"
+		);
+		printf(
+			"hyprland scroll apply method: %s\n",
+			wsf_hyprland_scroll_apply_method_name(state->scroll_apply_method)
+		);
 		printf("hyprland backend: native scroll apply available (single factor for vertical + horizontal)\n");
 		printf("hyprland backend: native pinch zoom/rotate scaling not exposed\n");
 	}
@@ -1433,7 +1569,10 @@ static int wsf_cmd_status(bool json) {
 		printf("WSF_PINCH_ROTATE_FACTOR: %s (env override)\n", env_pinch_rotate);
 	}
 	if (hyprland.running) {
-		printf("runtime scroll apply: active via Hyprland native backend\n");
+		printf(
+			"runtime scroll apply: active via Hyprland %s backend\n",
+			wsf_hyprland_scroll_apply_method_name(hyprland.scroll_apply_method)
+		);
 		if (runtime.hyprland_library_mapped) {
 			printf("runtime gesture reload: active via Hyprland gestures-only preload\n");
 		} else {
@@ -2223,7 +2362,10 @@ static int wsf_cmd_doctor(bool json) {
 
 	wsf_doctor_symbols_print(&symbols);
 	if (hyprland.running) {
-		printf("runtime scroll apply: active via Hyprland native backend\n");
+		printf(
+			"runtime scroll apply: active via Hyprland %s backend\n",
+			wsf_hyprland_scroll_apply_method_name(hyprland.scroll_apply_method)
+		);
 		if (runtime.hyprland_library_mapped) {
 			printf("runtime gesture reload: active via Hyprland gestures-only preload\n");
 		} else {

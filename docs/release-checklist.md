@@ -27,6 +27,9 @@ python3 -m py_compile gui/wsf_gui.py
 
 - Confirm `hyprctl getoption input:touchpad:scroll_factor` works.
 - Run `wsf set 0.35` and verify the live Hyprland scroll factor changes.
+- On Hyprland 0.55+ Lua configs, confirm `wsf doctor` reports
+  `hyprland scroll apply method: lua-eval` and `wsf apply` changes
+  `input:touchpad:scroll_factor` through the eval backend.
 - Verify vertical and horizontal GUI sliders stay synchronized, because
   Hyprland exposes one native touchpad scroll factor.
 - Launch Hyprland through:

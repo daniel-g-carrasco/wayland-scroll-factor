@@ -10,8 +10,18 @@ Hyprland already exposes a native touchpad scroll setting:
 hyprctl keyword input:touchpad:scroll_factor 0.35
 ```
 
-WSF uses that native runtime setting for scroll instead of patching Hyprland.
-The preload library is not loaded inside Hyprland by default.
+With Hyprland 0.55+ Lua configurations, `hyprctl keyword` is rejected by the
+non-legacy parser. WSF detects that path and uses the Lua runtime equivalent:
+
+```bash
+hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = 0.35 } } })'
+```
+
+WSF uses those native runtime settings for scroll instead of patching Hyprland.
+After applying a value, WSF verifies the live value with
+`hyprctl getoption input:touchpad:scroll_factor`; if the value did not change,
+the command fails instead of reporting a false success. The preload library is
+not loaded inside Hyprland by default for scroll.
 
 For pinch zoom/rotate, WSF uses a separate launch-time path through
 `wsf-hyprland`. This is intentionally separate from scroll because Hyprland
@@ -31,7 +41,8 @@ native settings.
   backends. On Hyprland it uses `scroll_vertical_factor` as the canonical value
   if vertical and horizontal differ.
 - `wsf status` and `wsf doctor` report the current Hyprland
-  `input:touchpad:scroll_factor` value.
+  `input:touchpad:scroll_factor` value and the runtime method used for scroll
+  application (`keyword` or `lua-eval`).
 
 ## Limits
 
@@ -165,6 +176,23 @@ Recommended startup config pattern:
 exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x "$HOME/.local/bin/wsf" ]; then "$HOME/.local/bin/wsf" apply; fi'
 ```
 
+For Hyprland 0.55+ Lua configs, package installs provide a generic helper:
+
+```lua
+dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+For per-user installs from `./scripts/install.sh`, use:
+
+```lua
+dofile(os.getenv("HOME") .. "/.local/share/wayland-scroll-factor/hyprland/wsf.lua")
+```
+
+The helper calls `wsf apply` when loaded and on `hyprland.start` /
+`config.reloaded`. This keeps the integration distro-neutral: WSF does not edit
+the user's Lua config, but a distro or user can opt into reload-safe scroll
+persistence with one line.
+
 For system images or preconfigured desktops, prefer launching `wsf apply` as
 part of the compositor/session startup path after Hyprland has exported its
 runtime environment.
@@ -188,6 +216,11 @@ Audited on 2026-05-09 against:
 
 - Local Hyprland `0.54.3`
 - Upstream Hyprland master commit `11bd00c`
+
+Hyprland 0.55+ Lua behavior was validated in a Margine OS VM on 2026-05-19:
+`hyprctl keyword input:touchpad:scroll_factor ...` is rejected by the Lua
+config manager, while the `hyprctl eval 'hl.config(...)'` path applies the live
+scroll factor.
 - Upstream Aquamarine commit `813c1e8`
 
 Findings:
