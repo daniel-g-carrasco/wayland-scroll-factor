@@ -17,6 +17,26 @@ install_dnf_libinput_pkg() {
   return 0
 }
 
+check_immutable_distro() {
+  if command -v rpm-ostree > /dev/null 2>&1; then
+    return 0
+  fi
+  return 1 # no immutable distro
+}
+
+install_immutable() {
+  if ! command -v distrobox-ephemeral >/dev/null 2>&1; then
+    echo "Could not find distrobox. Please install build dependencies manually." >&2
+    return 1
+  fi
+
+  echo "Immutable distro detected."
+  echo "Installing using distrobox..."
+  distrobox-ephemeral --additional-packages \
+  "gcc gcc-c++ ccache make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita" \
+  -- bash "$0"
+}
+
 install_deps() {
   if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
@@ -26,10 +46,15 @@ install_deps() {
   fi
 
   if command -v dnf >/dev/null 2>&1; then
-    sudo dnf install -y gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git \
+    if check_immutable_distro; then
+      install_immutable
+      return 0
+    else
+      sudo dnf install -y gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git \
       python3 python3-gobject gtk4 libadwaita
-    install_dnf_libinput_pkg
-    return 0
+      install_dnf_libinput_pkg
+      return 0
+    fi
   fi
 
   if command -v pacman >/dev/null 2>&1; then
@@ -49,6 +74,10 @@ install_deps() {
 }
 
 install_deps
+
+if check_immutable_distro; then
+  exit 0  # install_immutable already did everything inside the container
+fi
 
 if [ -d "$DEST/.git" ]; then
   git -C "$DEST" fetch --all --tags
