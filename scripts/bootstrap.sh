@@ -32,9 +32,18 @@ install_immutable() {
 
   echo "Immutable distro detected."
   echo "Installing using distrobox..."
+
+  local script
+  if [ -f "$0" ]; then
+    script="$0"
+  else
+    script="$(mktemp)"
+    curl -fsSL "https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/${WSF_REF}/scripts/bootstrap.sh" -o "$script"
+  fi
+
   distrobox-ephemeral --additional-packages \
-  "gcc gcc-c++ ccache make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita" \
-  -- bash "$0"
+    "gcc gcc-c++ ccache make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita" \
+    -- bash "$script"
 }
 
 install_deps() {
