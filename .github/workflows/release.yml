@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
@@ -48,7 +48,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wayland-scroll-factor-release-${{ env.RELEASE_TAG }}
           path: package-artifacts/*

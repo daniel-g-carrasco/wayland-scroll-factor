@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build and validation dependencies
         run: |
@@ -80,7 +80,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run container smoke test
         run: CONTAINER_ENGINE=docker scripts/test-containers.sh "${{ matrix.target }}"

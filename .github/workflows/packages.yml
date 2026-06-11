@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build package in container
         run: |
@@ -37,7 +37,7 @@ jobs:
             scripts/test-packages.sh "${{ matrix.target }}"
 
       - name: Upload package artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wayland-scroll-factor-${{ matrix.target }}-${{ github.sha }}
           path: package-artifacts/${{ matrix.target }}/*
