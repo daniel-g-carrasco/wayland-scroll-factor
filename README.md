@@ -1,35 +1,44 @@
-# Wayland Scroll Factor (WSF)
+# Wayland Scroll Factor
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 <p align="center">
   <img src="data/icons/hicolor/512x512/apps/io.github.danielgrasso.WaylandScrollFactor.png"
-       alt="WSF icon" width="160" height="160">
+       alt="Wayland Scroll Factor icon" width="150" height="150">
 </p>
 
 <p align="center">
-  <b>Tune touchpad scroll and gesture feel on Wayland</b><br>
-  GNOME Wayland preload backend, plus experimental Hyprland scroll and gesture support.<br>
-  <i>Status: stable v0.3.3. Hyprland support is new and still being expanded.</i>
+  <b>Tune touchpad scroll and gesture sensitivity on Wayland.</b><br>
+  GNOME Wayland support, plus Hyprland scroll and gesture support.<br>
+  <i>Current release: 0.3.3. Hyprland support is usable, but still newer than the GNOME backend.</i>
 </p>
 
 ---
 
-## What It Does
+## What WSF Does
 
-WSF adjusts touchpad sensitivity when the compositor does not expose enough user-facing controls.
+Wayland Scroll Factor, or WSF, adjusts touchpad gesture sensitivity when the
+desktop does not expose enough controls.
 
-- Two-finger scroll factor.
-- Pinch zoom factor.
-- Pinch rotate factor.
-- GNOME Wayland support through a guarded per-user preload library.
-- Hyprland scroll support through native `hyprctl`.
-- Experimental Hyprland pinch zoom/rotate support through a `start-hyprland`
-  compatible launcher shim.
+It can tune:
 
-WSF is per-user and reversible. It does **not** use `/etc/ld.so.preload`.
+- two-finger vertical and horizontal scroll;
+- pinch zoom;
+- pinch rotate.
 
----
+WSF is designed to be reversible. It does not use `/etc/ld.so.preload`, and it
+does not patch GNOME, Hyprland, libinput, or your kernel.
+
+## Desktop Support
+
+| Desktop | Status | Notes |
+| --- | --- | --- |
+| GNOME Wayland | Supported | Uses a guarded preload backend loaded into `gnome-shell`. |
+| Hyprland | Supported | Uses Hyprland's native scroll setting and an optional gesture preload session. |
+| Hyprland Lua config | Supported | WSF uses `hyprctl eval` when `hyprctl keyword` is not accepted. |
+| KDE Plasma / KWin | Not yet | Planned, but not implemented. |
+| wlroots compositors | Not yet | Planned, but compositor-specific behavior still needs work. |
+| X11 | Not a target | WSF is designed for Wayland compositors. |
 
 ## Install
 
@@ -47,67 +56,104 @@ Latest Git build:
 yay -S wayland-scroll-factor-git
 ```
 
-The stable AUR package is recommended for most Arch-based systems. The `-git`
-package follows the latest `main` branch and is better suited for testing fixes
-before the next release.
+Use `wayland-scroll-factor` for normal installs. Use
+`wayland-scroll-factor-git` only when you want the latest `main` branch before
+the next release.
 
-### Other Distributions
+### Fedora Workstation / Fedora Spins
 
-Dependency names vary by distribution. See
-[`docs/dependencies.md`](docs/dependencies.md) for upstream links and package
-names, including Gentoo. In this project, `wsf` means the command installed by
-Wayland Scroll Factor; it is not a separate dependency package.
+WSF is available from COPR:
 
-Testing notes and the Podman smoke-test matrix are documented in
-[`docs/testing.md`](docs/testing.md).
+```bash
+sudo dnf install dnf-plugins-core
+sudo dnf copr enable daniel-g-carrasco/wayland-scroll-factor
+sudo dnf install wayland-scroll-factor
+```
 
-Packaging notes for AUR, RPM/COPR/OBS, and Debian/Ubuntu/PPA are documented in
-[`docs/packaging.md`](docs/packaging.md).
+### Fedora Atomic Desktops
 
-GitHub Actions runs source builds, distro smoke tests, and package builds on
-pushes and pull requests.
+For Silverblue, Kinoite, Sway Atomic, Budgie Atomic, bootc-based images, or
+derived systems, add the COPR repo file and layer the package:
 
-Fedora COPR publication setup is documented in [`docs/copr.md`](docs/copr.md).
+```bash
+fedora_version="$(rpm -E %fedora)"
 
-One-shot user install:
+sudo curl -fsSL \
+  -o /etc/yum.repos.d/daniel-g-carrasco-wayland-scroll-factor.repo \
+  "https://copr.fedorainfracloud.org/coprs/daniel-g-carrasco/wayland-scroll-factor/repo/fedora-${fedora_version}/daniel-g-carrasco-wayland-scroll-factor-fedora-${fedora_version}.repo"
+
+sudo rpm-ostree refresh-md
+sudo rpm-ostree install wayland-scroll-factor
+systemctl reboot
+```
+
+Atomic users who build their own image can instead include the same COPR repo
+and package in the image recipe.
+
+### Debian / Ubuntu
+
+There is not an official apt repository yet. For now, install the `.deb` from
+the latest GitHub Release:
+
+```bash
+version="0.3.3"
+curl -LO "https://github.com/daniel-g-carrasco/wayland-scroll-factor/releases/download/v${version}/wayland-scroll-factor_${version}-1_amd64.deb"
+sudo apt install "./wayland-scroll-factor_${version}-1_amd64.deb"
+```
+
+This currently targets `amd64`.
+
+### openSUSE, Gentoo, And Other Distros
+
+Use the source install for now. Package names for build dependencies are listed
+in [docs/dependencies.md](docs/dependencies.md).
+
+One-shot source install:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/daniel-g-carrasco/wayland-scroll-factor/main/scripts/bootstrap.sh | bash
 ```
 
-Manual build:
+Manual source install:
 
 ```bash
 git clone https://github.com/daniel-g-carrasco/wayland-scroll-factor.git
 cd wayland-scroll-factor
 meson setup build --prefix="$HOME/.local"
-ninja -C build
+meson compile -C build
 meson install -C build
 ```
 
-The installer places files under `~/.local`.
+The source installer writes under `~/.local`. It does not edit system login
+manager configuration.
 
-It installs `wsf`, `wsf-gui`, `wsf-hyprland`, `wsf-session-wrapper`, and
-`libwsf_preload.so`. It does not automatically modify your login manager.
+## Basic Use
 
----
-
-## Quick Start
-
-Set a factor:
+Set the main scroll factor:
 
 ```bash
 wsf set 0.35
 ```
 
-Check status:
+Set individual factors:
 
 ```bash
+wsf set \
+  --scroll-vertical 0.35 \
+  --scroll-horizontal 0.35 \
+  --pinch-zoom 1.00 \
+  --pinch-rotate 1.00
+```
+
+Inspect the current configuration:
+
+```bash
+wsf get
 wsf status
 wsf doctor
 ```
 
-Run the GUI:
+Open the GUI:
 
 ```bash
 wsf-gui
@@ -117,11 +163,11 @@ wsf-gui
   <img src="docs/screenshots/gui.png" alt="WSF GUI screenshot" width="760">
 </p>
 
----
-
 ## GNOME Wayland
 
-GNOME uses the preload backend.
+GNOME support uses a per-user preload backend.
+
+Enable it:
 
 ```bash
 wsf set 0.35
@@ -130,17 +176,17 @@ wsf enable
 
 Then log out and log back in.
 
-If diagnostics show that `environment.d` is missing, commented out, stale, or
-not loaded by the user manager, run:
+After WSF is loaded into `gnome-shell`, later factor changes are re-read during
+new handled gesture events. Changing factors should not require another logout,
+but enabling or disabling the preload still does.
+
+If diagnostics show a stale or missing preload setup:
 
 ```bash
 wsf repair
 ```
 
-Then log out and log back in. `wsf repair` rewrites only WSF's per-user
-environment file and does not edit system login-manager configuration.
-
-Disable:
+Disable it:
 
 ```bash
 wsf disable
@@ -148,220 +194,133 @@ wsf disable
 
 Then log out and log back in.
 
-Once the preload is already loaded in `gnome-shell`, later `wsf set ...`
-changes are re-read by WSF on handled gesture events. You should not need
-another logout for factor changes, but start a new gesture when testing.
-
----
-
 ## Hyprland
 
-Hyprland uses the native backend for scroll.
-
-On legacy/hyprlang configurations, WSF applies:
-
-```bash
-hyprctl keyword input:touchpad:scroll_factor <factor>
-```
-
-On Hyprland 0.55+ Lua configurations, WSF automatically falls back to:
-
-```bash
-hyprctl eval 'hl.config({ input = { touchpad = { scroll_factor = <factor> } } })'
-```
-
-So scroll changes apply immediately:
+Hyprland scroll tuning is live:
 
 ```bash
 wsf set 0.35
-hyprctl getoption input:touchpad:scroll_factor
+wsf apply
 ```
 
-No logout/login is required for Hyprland scroll changes.
+Hyprland currently exposes one native touchpad scroll factor shared by vertical
+and horizontal scrolling. For that reason, WSF keeps those two scroll values in
+sync when running under Hyprland.
 
-Hyprland currently exposes one native touchpad scroll factor shared by vertical and horizontal scrolling. For that reason, WSF keeps the vertical and horizontal scroll controls synchronized on Hyprland.
-
-Hyprland does not currently expose native client pinch zoom/rotate sensitivity
-settings. WSF can tune those controls by starting Hyprland through the installed
-`wsf-hyprland` shim.
-
-Package installs also provide a separate Wayland session:
+For pinch zoom and pinch rotate, launch the dedicated session installed by WSF:
 
 ```text
 Hyprland (WSF gestures)
 ```
 
-Select that session in your greeter to start Hyprland with WSF pinch
-zoom/rotate support. This avoids editing `greetd`, SDDM, or other login-manager
-configuration directly. Existing Hyprland sessions are left unchanged.
+Select it from your greeter. This starts Hyprland through WSF's
+`start-hyprland`-compatible launcher without rewriting `greetd`, SDDM, GDM, or
+other login-manager configuration.
+
+Check activation:
 
 ```bash
-start-hyprland --path "$(command -v wsf-hyprland)" -- --config ~/.config/hypr/hyprland.conf
+wsf doctor
 ```
 
-This keeps Hyprland inside its recommended `start-hyprland` launch path while
-letting WSF preload only the compositor process for gesture hooks. Once
-`wsf doctor` reports `hyprland gesture preload: active`, pinch factor changes
-are picked up live from the WSF config.
+Look for:
 
-WSF does not modify login manager configuration automatically. If you use a
-display manager or a custom session script, point that session command at the
-`start-hyprland --path ...` form above.
-
-For greetd/tuigreet setups that select desktop entries or use
-`--remember-session`, use the system-installed wrapper when WSF is installed
-from a distro package:
-
-```bash
-tuigreet ... --session-wrapper /usr/bin/wsf-session-wrapper
+```text
+hyprland gesture preload: active
 ```
 
-`tuigreet --remember-session` overrides `--cmd` after the first remembered
-login, so a plain `--cmd start-hyprland --path ...` may be silently bypassed.
-The wrapper leaves non-Hyprland sessions unchanged and only injects
-`wsf-hyprland` when the selected session is `Hyprland` or `start-hyprland`.
+Hyprland reloads can overwrite runtime scroll settings with values from the
+static config. If WSF should manage scroll speed, remove or comment out static
+`scroll_factor` entries from your Hyprland config, or intentionally keep them
+in sync with WSF.
 
-Do not hardcode a per-user path such as `~/.local/bin/wsf-session-wrapper` in
-`/etc/greetd/config.toml`: if that user install is removed, the greeter can no
-longer start the session. If you need a reversible setup, point greetd at a
-small fallback wrapper in `/usr/local/bin` that runs WSF when available and
-otherwise executes the original session command.
-
-### Hyprland Persistence
-
-Hyprland runtime settings can be overwritten by static config during reload/login. If WSF should manage scroll speed, remove or comment out any static `touchpad.scroll_factor` / `input:touchpad:scroll_factor` value from your Hyprland config, or keep it intentionally in sync with WSF.
-
-For legacy/hyprlang configs, add a startup command in your Hyprland autostart
-config:
-
-```ini
-exec-once = sh -lc 'if command -v wsf >/dev/null 2>&1; then wsf apply; elif [ -x "$HOME/.local/bin/wsf" ]; then "$HOME/.local/bin/wsf" apply; fi'
-```
-
-For Hyprland 0.55+ Lua configs, package installs provide a generic optional
-module:
+For Hyprland 0.55+ Lua configs, WSF packages install a generic helper:
 
 ```lua
 dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
 ```
 
-For per-user installs from `./scripts/install.sh`, use:
+For per-user source installs:
 
 ```lua
 dofile(os.getenv("HOME") .. "/.local/share/wayland-scroll-factor/hyprland/wsf.lua")
 ```
 
-That module calls `wsf apply` when loaded and after `hyprland.start` /
-`config.reloaded`, so the saved WSF value is restored after reloads without
-hardcoding distro-specific paths.
+The helper reapplies saved WSF scroll settings after Lua config reloads.
 
-More details: [`docs/hyprland.md`](docs/hyprland.md)
+More details are in [docs/hyprland.md](docs/hyprland.md).
 
-Architecture details: [`docs/how-it-works.md`](docs/how-it-works.md)
+## Configuration
 
----
-
-## Commands
-
-```bash
-wsf get
-wsf get --json
-wsf set <factor>
-wsf set --scroll-vertical <factor>
-wsf set --scroll-horizontal <factor>
-wsf set --pinch-zoom <factor>
-wsf set --pinch-rotate <factor>
-wsf apply
-wsf enable
-wsf repair
-wsf disable
-wsf status
-wsf status --json
-wsf doctor
-wsf doctor --json
-wsf-hyprland
-wsf-session-wrapper
-```
-
-Config file:
+WSF stores user settings here:
 
 ```text
 ~/.config/wayland-scroll-factor/config
 ```
 
-Example:
+Supported keys:
 
 ```ini
-factor=0.35
 scroll_vertical_factor=0.35
 scroll_horizontal_factor=0.35
 pinch_zoom_factor=1.00
 pinch_rotate_factor=1.00
 ```
 
----
+The legacy `factor=...` key is still accepted for scroll settings.
 
 ## Uninstall
 
+Package installs should be removed with the package manager used to install
+them.
+
+Arch:
+
 ```bash
-wsf disable
-rm -rf ~/.config/wayland-scroll-factor
-rm -f ~/.config/environment.d/wayland-scroll-factor.conf
-rm -f ~/.local/bin/wsf ~/.local/bin/wsf-gui ~/.local/bin/wsf-hyprland ~/.local/bin/wsf-session-wrapper
-rm -rf ~/.local/lib/wayland-scroll-factor
-rm -f ~/.local/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
-rm -f ~/.local/share/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+yay -Rns wayland-scroll-factor
 ```
 
-After disabling GNOME preload, log out and log back in.
+Fedora:
 
----
+```bash
+sudo dnf remove wayland-scroll-factor
+```
 
-## Compatibility
+Fedora Atomic:
 
-Known working:
+```bash
+sudo rpm-ostree uninstall wayland-scroll-factor
+systemctl reboot
+```
 
-- Arch Linux rolling + GNOME Wayland.
-- Arch Linux rolling + Hyprland native scroll backend.
-- Ubuntu 24.04 LTS.
-- Recent Fedora.
+Source install:
 
-Requirements:
+```bash
+~/wayland-scroll-factor/scripts/uninstall.sh
+```
 
-- `meson`, `ninja`, C compiler for building from source.
-- `libinput`.
-- Python 3, GTK4, libadwaita for the GUI.
-- `hyprctl` for Hyprland native scroll support.
+Per-user state can also be removed manually:
 
----
+```bash
+rm -f ~/.config/environment.d/wayland-scroll-factor.conf
+rm -rf ~/.config/wayland-scroll-factor
+```
 
-## Limitations
+## Documentation
 
-- GNOME enable/disable requires logout/login because `gnome-shell` must load or unload the preload library.
-- Hyprland has one native touchpad scroll factor, not independent vertical/horizontal factors.
-- Hyprland pinch zoom/rotate support is experimental and requires launching
-  Hyprland with the targeted gestures-only preload.
-- WSF is a workaround until compositors expose better upstream controls.
+- [Install details](docs/install.md)
+- [Dependencies](docs/dependencies.md)
+- [Hyprland backend](docs/hyprland.md)
+- [How WSF works](docs/how-it-works.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Testing](docs/testing.md)
+- [Packaging](docs/packaging.md)
+- [Fedora COPR publishing](docs/copr.md)
 
----
+## Project Status
 
-## Docs
-
-- [`docs/install.md`](docs/install.md)
-- [`docs/dependencies.md`](docs/dependencies.md)
-- [`docs/how-it-works.md`](docs/how-it-works.md)
-- [`docs/troubleshooting.md`](docs/troubleshooting.md)
-- [`docs/hyprland.md`](docs/hyprland.md)
-- [`docs/release-checklist.md`](docs/release-checklist.md)
-- [`docs/design.md`](docs/design.md)
-- [`CHANGELOG.md`](CHANGELOG.md)
-
----
-
-## Acknowledgements
-
-WSF was inspired by the idea behind [`libinput-config`](https://github.com/lz42/libinput-config), but uses a narrower and safer architecture: no global preload, per-user rollback, GNOME process guard, Hyprland native backend, and built-in diagnostics.
-
-## License
-
-MIT. See [`LICENSE`](LICENSE).
+WSF is a small open-source tool built around practical desktop behavior. The
+GNOME backend is the oldest and most proven path. Hyprland support works today,
+including Lua scroll application and optional pinch gesture tuning, but it is
+still a newer backend and may need compositor-specific fixes as Hyprland
+evolves.
