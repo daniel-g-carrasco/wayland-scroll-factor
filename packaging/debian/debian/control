@@ -1,0 +1,35 @@
+Source: wayland-scroll-factor
+Section: utils
+Priority: optional
+Maintainer: Daniel Grasso <daniel@the-empty.place>
+Build-Depends:
+ debhelper-compat (= 13),
+ meson,
+ ninja-build,
+ pkg-config,
+ gcc,
+ python3,
+ desktop-file-utils,
+ appstream
+Standards-Version: 4.7.0
+Homepage: https://github.com/daniel-g-carrasco/wayland-scroll-factor
+Rules-Requires-Root: no
+
+Package: wayland-scroll-factor
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ python3:any,
+ python3-gi,
+ gir1.2-gtk-4.0,
+ gir1.2-adw-1
+Recommends:
+ libinput-tools
+Suggests:
+ hyprland
+Description: touchpad scroll and gesture tuning for Wayland
+ Wayland Scroll Factor provides touchpad scroll and gesture tuning for Wayland
+ desktops. It supports GNOME Wayland through a guarded per-user preload backend
+ and Hyprland through native runtime scroll settings plus an optional gesture
+ launcher.

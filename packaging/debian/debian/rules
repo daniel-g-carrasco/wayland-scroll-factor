@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --buildsystem=meson
+
+override_dh_auto_configure:
+	dh_auto_configure -- --buildtype=release
+
+override_dh_auto_test:
+	dh_auto_test
+	python3 -m py_compile gui/wsf_gui.py
+	desktop-file-validate obj-*/data/io.github.danielgrasso.WaylandScrollFactor.desktop
+	appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml

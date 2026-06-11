@@ -1,0 +1,5 @@
+wayland-scroll-factor (0.3.2-1) unstable; urgency=medium
+
+  * Initial Debian packaging template.
+
+ -- Daniel Grasso <daniel@the-empty.place>  Thu, 11 Jun 2026 11:30:00 +0200

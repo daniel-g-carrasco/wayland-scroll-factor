@@ -61,6 +61,9 @@ Wayland Scroll Factor; it is not a separate dependency package.
 Testing notes and the Podman smoke-test matrix are documented in
 [`docs/testing.md`](docs/testing.md).
 
+Packaging notes for AUR, RPM/COPR/OBS, and Debian/Ubuntu/PPA are documented in
+[`docs/packaging.md`](docs/packaging.md).
+
 One-shot user install:
 
 ```bash

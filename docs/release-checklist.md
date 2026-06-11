@@ -23,6 +23,17 @@ These tests cover distro dependency names, Meson build/install, CLI JSON
 output, Python GUI syntax, and installed desktop/metainfo validation. They do
 not replace real GNOME/Hyprland runtime tests.
 
+## Package Smoke Tests
+
+Run package build tests when Podman is available:
+
+```bash
+scripts/test-packages.sh all
+```
+
+This builds RPM and Debian packages inside disposable containers. It does not
+install packages on the host.
+
 ## GNOME Wayland
 
 - Install with `./scripts/install.sh`.

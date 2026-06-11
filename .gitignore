@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 *~
 .DS_Store
+
+# Local AUR publishing clones (nested Git repos, not source files)
+packaging/aur-worktrees/
