@@ -31,6 +31,23 @@
 - If using a custom library location, set `WSF_LIB_PATH` before enabling.
 - If a snap app fails to launch, update to a recent WSF version and rerun `wsf doctor`. Current builds remove WSF from child `LD_PRELOAD` after load to avoid inherited-preload problems.
 
+## App-specific scroll differences
+
+If GNOME apps such as Files or Settings change speed correctly, WSF is active.
+If a specific app still scrolls too quickly, the remaining difference is likely
+inside that app or toolkit rather than in WSF's compositor hook.
+
+This has been reported with Electron-based apps such as Discord/Vesktop. Test
+with an intentionally obvious value such as `wsf set 0.20`, then compare:
+
+- a native GNOME app;
+- a GTK Flatpak app;
+- the affected app.
+
+If GNOME and GTK apps change but the affected app does not, include the app
+name, install method, Wayland/XWayland status, and `wsf doctor` output in the
+issue.
+
 ## Hyprland
 
 - Run `wsf status` and confirm it reports `hyprland: running`.

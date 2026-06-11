@@ -26,6 +26,16 @@ Use `wayland-scroll-factor` for normal installs. Use
 `wayland-scroll-factor-git` only if you want the latest `main` branch changes
 before the next release.
 
+## Dependencies
+
+Dependency names vary by distribution. See
+[`dependencies.md`](dependencies.md) for upstream links and package names for
+Arch, Debian/Ubuntu, Fedora, openSUSE, and Gentoo.
+
+In this project, `wsf` means the command installed by Wayland Scroll Factor. It
+is not a separate dependency package unless your distribution packages WSF
+itself.
+
 ## Build
 
 ```

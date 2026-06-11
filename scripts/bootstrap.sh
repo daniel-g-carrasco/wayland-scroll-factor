@@ -44,7 +44,15 @@ install_deps() {
     return 0
   fi
 
+  if command -v emerge >/dev/null 2>&1; then
+    sudo emerge --ask=n dev-build/meson dev-build/ninja virtual/pkgconfig \
+      dev-vcs/git sys-devel/gcc dev-lang/python dev-python/pygobject \
+      gui-libs/gtk gui-libs/libadwaita dev-libs/libinput
+    return 0
+  fi
+
   echo "Unsupported distro: install dependencies manually." >&2
+  echo "See docs/dependencies.md for package names and upstream links." >&2
   return 1
 }
 

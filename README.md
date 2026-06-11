@@ -53,6 +53,11 @@ before the next release.
 
 ### Other Distributions
 
+Dependency names vary by distribution. See
+[`docs/dependencies.md`](docs/dependencies.md) for upstream links and package
+names, including Gentoo. In this project, `wsf` means the command installed by
+Wayland Scroll Factor; it is not a separate dependency package.
+
 One-shot user install:
 
 ```bash
@@ -332,6 +337,7 @@ Requirements:
 ## Docs
 
 - [`docs/install.md`](docs/install.md)
+- [`docs/dependencies.md`](docs/dependencies.md)
 - [`docs/how-it-works.md`](docs/how-it-works.md)
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`docs/hyprland.md`](docs/hyprland.md)
