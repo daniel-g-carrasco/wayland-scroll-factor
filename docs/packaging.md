@@ -54,6 +54,10 @@ The same package tests run in GitHub Actions on every push and pull request.
 The workflow uploads RPM and Debian build outputs as temporary artifacts, so
 you can inspect packages without rebuilding them on your laptop.
 
+Fedora COPR publishing is documented in [`copr.md`](copr.md). The repository
+includes a manual GitHub Actions workflow that submits the generated source RPM
+to COPR after a `COPR_CONFIG` secret is configured.
+
 ## AUR Publishing Worktrees
 
 The live AUR repositories are separate Git repositories. Keep local clones under

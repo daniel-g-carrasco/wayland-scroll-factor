@@ -67,6 +67,8 @@ Packaging notes for AUR, RPM/COPR/OBS, and Debian/Ubuntu/PPA are documented in
 GitHub Actions runs source builds, distro smoke tests, and package builds on
 pushes and pull requests.
 
+Fedora COPR publication setup is documented in [`docs/copr.md`](docs/copr.md).
+
 One-shot user install:
 
 ```bash

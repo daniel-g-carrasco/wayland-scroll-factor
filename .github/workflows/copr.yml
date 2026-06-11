@@ -1,0 +1,92 @@
+name: Publish COPR
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "COPR project, e.g. wayland-scroll-factor or username/wayland-scroll-factor"
+        required: true
+        default: "wayland-scroll-factor"
+      nowait:
+        description: "Submit build and return without waiting"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: copr-${{ inputs.project }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build SRPM and submit to COPR
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build RPM/SRPM artifacts
+        run: |
+          mkdir -p package-artifacts/rpm
+          CONTAINER_ENGINE=docker \
+          WSF_PACKAGE_OUTDIR="$PWD/package-artifacts/rpm" \
+            scripts/test-packages.sh rpm
+
+      - name: Upload RPM/SRPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wayland-scroll-factor-copr-input-${{ github.sha }}
+          path: package-artifacts/rpm/*
+          if-no-files-found: error
+
+      - name: Submit SRPM to COPR
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+          COPR_PROJECT: ${{ inputs.project }}
+          COPR_NOWAIT: ${{ inputs.nowait }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${COPR_CONFIG:-}" ]; then
+            echo "::error::Missing COPR_CONFIG repository secret. See docs/copr.md."
+            exit 1
+          fi
+
+          case "$COPR_PROJECT" in
+            ""|*[!A-Za-z0-9_.@/-]*)
+              echo "::error::Invalid COPR project name: $COPR_PROJECT"
+              exit 2
+              ;;
+          esac
+
+          mkdir -p "$RUNNER_TEMP/copr-config"
+          printf '%s\n' "$COPR_CONFIG" > "$RUNNER_TEMP/copr-config/copr"
+          chmod 600 "$RUNNER_TEMP/copr-config/copr"
+
+          docker run --rm \
+            -v "$PWD/package-artifacts/rpm:/work:ro" \
+            -v "$RUNNER_TEMP/copr-config:/root/.config:ro" \
+            -e COPR_PROJECT \
+            -e COPR_NOWAIT \
+            docker.io/library/fedora:latest \
+            bash -lc '
+              set -euo pipefail
+              dnf -y --setopt=install_weak_deps=False install copr-cli findutils
+              srpm="$(find /work -maxdepth 1 -name "*.src.rpm" -print -quit)"
+              if [ -z "$srpm" ]; then
+                echo "No source RPM found in /work" >&2
+                exit 1
+              fi
+
+              extra=()
+              if [ "$COPR_NOWAIT" = "true" ]; then
+                extra=(--nowait)
+              fi
+
+              copr-cli build "${extra[@]}" "$COPR_PROJECT" "$srpm"
+            '

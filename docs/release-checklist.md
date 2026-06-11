@@ -22,6 +22,14 @@ Every push and pull request runs:
 Use these workflows as the first validation gate. Local container tests remain
 useful before a release tag or when debugging a distro-specific failure.
 
+COPR publication is manual:
+
+```text
+Actions -> Publish COPR -> Run workflow
+```
+
+It requires the `COPR_CONFIG` repository secret described in `docs/copr.md`.
+
 ## Container Smoke Tests
 
 Run the build/install smoke matrix when Podman is available:
