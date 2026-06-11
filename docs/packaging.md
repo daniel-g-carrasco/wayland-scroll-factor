@@ -15,6 +15,28 @@ integration, so a full Flatpak is not a good fit for the core tool.
 - Debian/Ubuntu: Debian packaging template from `packaging/debian/`.
 - Ubuntu: PPA can be built from the Debian packaging template.
 
+## Publication Status
+
+Currently published:
+
+- AUR stable: `wayland-scroll-factor`.
+- AUR development: `wayland-scroll-factor-git`.
+- GitHub Actions package artifacts for RPM and Debian builds.
+
+Prepared but not yet published to a distro package repository:
+
+- Fedora COPR.
+- openSUSE OBS.
+- Ubuntu PPA.
+- Debian official repositories.
+- Fedora official repositories.
+- openSUSE official repositories.
+
+Publishing to COPR, OBS, or a PPA requires project/account credentials that
+should be stored as repository secrets before adding automated upload jobs.
+Publishing to official distro repositories requires each distro's maintainer or
+sponsorship review process.
+
 ## Local Package Tests
 
 Use Podman from the repository root:
