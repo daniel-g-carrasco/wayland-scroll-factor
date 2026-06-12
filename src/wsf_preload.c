@@ -89,6 +89,7 @@ static void *wsf_load_symbol(const char *name);
 static bool wsf_debug = false;
 static bool wsf_trace = false;
 static bool wsf_active = false;
+static bool wsf_is_launcher = false;
 static bool wsf_is_gnome_shell = false;
 static bool wsf_scroll_active = false;
 static bool wsf_gesture_active = false;
@@ -230,19 +231,17 @@ static void wsf_trace_scroll_event(
 	);
 }
 
-static bool wsf_target_list_contains(const char *targets, const char *name) {
+static bool wsf_target_list_matches(const char *targets) {
 	const char *cursor = targets;
-	size_t name_len = 0;
 
-	if (targets == NULL || targets[0] == '\0' ||
-		name == NULL || name[0] == '\0') {
+	if (targets == NULL || targets[0] == '\0') {
 		return false;
 	}
 
-	name_len = strlen(name);
 	while (*cursor != '\0') {
+		char token[256];
 		const char *start = NULL;
-		const char *end = NULL;
+		size_t token_len = 0;
 
 		while (*cursor == ',' || *cursor == ':' ||
 			isspace((unsigned char) *cursor)) {
@@ -257,28 +256,27 @@ static bool wsf_target_list_contains(const char *targets, const char *name) {
 			!isspace((unsigned char) *cursor)) {
 			cursor++;
 		}
-		end = cursor;
 
-		while (end > start && isspace((unsigned char) *(end - 1))) {
-			end--;
-		}
-
-		if ((size_t) (end - start) == name_len &&
-			strncmp(start, name, name_len) == 0) {
-			return true;
+		token_len = (size_t) (cursor - start);
+		if (token_len > 0 && token_len < sizeof(token)) {
+			memcpy(token, start, token_len);
+			token[token_len] = '\0';
+			if (wsf_proc_matches(token)) {
+				return true;
+			}
 		}
 	}
 
 	return false;
 }
 
-static void wsf_configure_activity(const char *proc_name) {
+static void wsf_configure_activity(void) {
 	const char *targets = getenv("WSF_TARGETS");
 	bool has_targets = targets != NULL && targets[0] != '\0';
-	bool is_gnome_shell = strcmp(proc_name, "gnome-shell") == 0;
-	bool is_hyprland = strcmp(proc_name, "Hyprland") == 0;
+	bool is_gnome_shell = wsf_proc_matches("gnome-shell");
+	bool is_hyprland = wsf_proc_matches("Hyprland");
 	bool targeted = has_targets ?
-		wsf_target_list_contains(targets, proc_name) :
+		wsf_target_list_matches(targets) :
 		is_gnome_shell;
 	bool hyprland_gestures = is_hyprland &&
 		(targeted ||
@@ -546,7 +544,7 @@ static void wsf_init_internal(void) {
 	if (!wsf_proc_name(proc_name, sizeof(proc_name))) {
 		snprintf(proc_name, sizeof(proc_name), "unknown");
 	}
-	wsf_configure_activity(proc_name);
+	wsf_configure_activity();
 	wsf_apply_effective_factors(false);
 	wsf_real_scroll_value =
 		(wsf_scroll_value_fn) wsf_load_symbol(
@@ -585,8 +583,35 @@ static void wsf_init_internal(void) {
 			"libinput_event_gesture_get_angle_delta"
 		);
 
+	/*
+	 * Launcher/wrapper detection: some distros install the compositor
+	 * behind a wrapper that execs the real binary (e.g. nixpkgs installs
+	 * bin/gnome-shell as a wrapper around .gnome-shell-wrapped). The
+	 * wrapper process is named like the target but does not link
+	 * libinput, so none of the real symbols resolve. Treat it as a
+	 * launcher: stay inactive and keep LD_PRELOAD intact so the exec'd
+	 * child (the real compositor) still loads the preload.
+	 */
+	if (wsf_active &&
+		wsf_real_event_type == NULL &&
+		wsf_real_base_event == NULL &&
+		wsf_real_scroll_value == NULL &&
+		wsf_real_axis_value == NULL) {
+		wsf_debug_log(
+			"init: target name matched but libinput is not loaded; "
+			"assuming launcher, preserving LD_PRELOAD for children"
+		);
+		wsf_is_launcher = true;
+		wsf_active = false;
+		wsf_scroll_active = false;
+		wsf_gesture_active = false;
+		wsf_is_gnome_shell = false;
+	}
+
 	wsf_init_done = true;
-	wsf_prune_ld_preload_env();
+	if (!wsf_is_launcher) {
+		wsf_prune_ld_preload_env();
+	}
 	(void) wsf_config_snapshot(&config_mtime, &config_present);
 	wsf_config_seen = true;
 	wsf_config_present = config_present;
