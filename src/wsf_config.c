@@ -158,8 +158,16 @@ static char *wsf_trim(char *str) {
 
 int wsf_config_read(struct wsf_config_values *out_values, bool debug) {
 	FILE *file = NULL;
-	char *line = NULL;
-	size_t size = 0;
+	/*
+	 * Fixed-size line buffer instead of getline: this parser runs inside
+	 * gnome-shell (init + the live-reload tick). A corrupted or hostile
+	 * config with one gigantic line would make getline malloc the whole
+	 * line, spiking the compositor's memory. A valid line is "key=value"
+	 * with keys < 40 chars and short float values, so 256 bytes is ample;
+	 * over-long lines are drained and rejected.
+	 */
+	char line[256];
+	struct stat st;
 	bool found = false;
 	bool invalid = false;
 	const char *path = wsf_config_path();
@@ -184,8 +192,27 @@ int wsf_config_read(struct wsf_config_values *out_values, bool debug) {
 		return WSF_CONFIG_ERROR;
 	}
 
-	while (getline(&line, &size, file) >= 0) {
+	/* Refuse implausibly large config files outright (64 KiB ceiling). */
+	if (fstat(fileno(file), &st) == 0 && st.st_size > 65536) {
+		wsf_debug_log(debug, "config file too large (%lld bytes); ignoring",
+			(long long) st.st_size);
+		fclose(file);
+		return WSF_CONFIG_INVALID;
+	}
+
+	while (fgets(line, (int) sizeof(line), file) != NULL) {
 		char *cursor = line;
+
+		/* Drain the rest of an over-long line so the tail isn't parsed
+		 * as a separate bogus line. */
+		if (strchr(line, '\n') == NULL && !feof(file)) {
+			int ch;
+			while ((ch = fgetc(file)) != '\n' && ch != EOF) {
+				/* discard */
+			}
+			invalid = true;
+			continue;
+		}
 		char *eq = NULL;
 		char *key = NULL;
 		char *value = NULL;
@@ -265,7 +292,6 @@ int wsf_config_read(struct wsf_config_values *out_values, bool debug) {
 		}
 	}
 
-	free(line);
 	fclose(file);
 
 	if (invalid) {

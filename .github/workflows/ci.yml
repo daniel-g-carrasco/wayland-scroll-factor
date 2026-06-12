@@ -36,15 +36,22 @@ jobs:
             libgtk-4-1 \
             libadwaita-1-0 \
             desktop-file-utils \
-            appstream
+            appstream \
+            cppcheck
 
       - name: Check shell scripts
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
-      - name: Build
+      - name: Static analysis (cppcheck)
         run: |
-          meson setup build --prefix=/usr --buildtype=release
+          cppcheck --enable=warning,performance,portability \
+            --inline-suppr --error-exitcode=2 --quiet -I src \
+            src/ tools/wsf.c
+
+      - name: Build (warnings are errors)
+        run: |
+          meson setup build --prefix=/usr --buildtype=release --werror
           meson compile -C build
 
       - name: Validate installed metadata inputs

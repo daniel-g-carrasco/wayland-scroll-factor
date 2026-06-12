@@ -4,5 +4,11 @@ shared_library(
   name_prefix: 'lib',
   install: true,
   install_dir: wsf_libdir,
-  dependencies: [dl_dep]
+  # Only the six interposed libinput_* wrappers need to be visible; the
+  # helper functions are an implementation detail of a library loaded
+  # into the compositor, so hide everything not explicitly exported.
+  gnu_symbol_visibility: 'hidden',
+  # threads_dep: pthread_once in the interposer (links libpthread on
+  # toolchains where it is not folded into libc).
+  dependencies: [dl_dep, threads_dep]
 )
