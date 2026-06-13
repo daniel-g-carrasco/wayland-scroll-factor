@@ -1,0 +1,96 @@
+name: Publish AUR
+
+# Publishes the stable package on every clean semver tag (vX.Y.Z), the same
+# way COPR ships the Fedora package — but fully automatic on the tag rather
+# than a manual dispatch. Pre-release tags (v1.2.3-rc1, …) are skipped. The
+# -git package is refreshed alongside so a PKGBUILD change reaches the AUR too.
+#
+# workflow_dispatch is kept for bootstrapping / re-publishing an existing tag
+# if a push failed (it does not change the normal automatic-on-tag flow).
+#
+# Requires the AUR_SSH_KEY secret: the PRIVATE half of an SSH key whose public
+# half is registered on an AUR account that (co-)maintains both packages.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish, e.g. v0.3.5"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aur-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to AUR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCH_TAG:-}" ]; then
+            tag="$DISPATCH_TAG"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # Skip pre-releases (anything with a '-' after the version).
+          if [[ "$tag" == *-* ]]; then
+            echo "Pre-release tag '$tag' — skipping AUR publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the tag
+        if: steps.tag.outputs.skip != 'true'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Publish (stable + -git) to the AUR
+        if: steps.tag.outputs.skip != 'true'
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AUR_SSH_KEY:-}" ]; then
+            echo "::error::Missing AUR_SSH_KEY secret (private deploy key for the AUR account)."
+            exit 1
+          fi
+          mkdir -p aur-ssh
+          printf '%s\n' "$AUR_SSH_KEY" > aur-ssh/aur
+          chmod 600 aur-ssh/aur
+
+          docker run --rm \
+            -v "$PWD:/work" \
+            -v "$PWD/aur-ssh:/aur-ssh:ro" \
+            -e TAG \
+            docker.io/library/archlinux:latest \
+            bash -c '
+              set -euo pipefail
+              pacman -Sy --noconfirm --needed base-devel git openssh curl
+              useradd -m builder
+              install -d -m 700 /home/builder/.ssh
+              cp /aur-ssh/aur /home/builder/.ssh/aur
+              chmod 600 /home/builder/.ssh/aur
+              ssh-keyscan -t ed25519,rsa aur.archlinux.org \
+                > /home/builder/.ssh/known_hosts 2>/dev/null
+              printf "Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n  IdentitiesOnly yes\n" \
+                > /home/builder/.ssh/config
+              chown -R builder:builder /home/builder/.ssh /work
+              su builder -c "TAG=$TAG REPO_ROOT=/work /work/.github/scripts/aur-publish.sh"
+            '

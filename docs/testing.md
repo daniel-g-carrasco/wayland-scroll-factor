@@ -9,6 +9,22 @@ Containers are useful, but they cannot prove that libinput events are modified
 inside `gnome-shell` or `Hyprland`, and they cannot prove how a real Flatpak or
 Electron window consumes Wayland pointer-axis events.
 
+## Iterating on the GUI (distrobox)
+
+To work on the GUI without rebasing an atomic host or spinning up a VM:
+
+```bash
+scripts/dev-distrobox.sh create   # one-time: Ubuntu box + deps + first build
+scripts/dev-distrobox.sh build    # rebuild + reinstall after editing code
+scripts/dev-distrobox.sh gui      # launch wsf-gui on your session
+```
+
+distrobox shares `$HOME` and the Wayland socket, so the window opens on your
+host session. This exercises the GUI app (window, About dialog, sliders,
+toasts) and the CLI it drives — but **not** real scroll-injection behavior,
+which needs the compositor's own `gnome-shell` to load the preload (use a
+separate VM with a full GNOME session for that).
+
 ## Container Smoke Tests
 
 Use Podman from the repository root:
