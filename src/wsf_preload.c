@@ -2,6 +2,8 @@
 
 #include <ctype.h>
 #include <dlfcn.h>
+#include <pthread.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -20,6 +22,13 @@
 
 #include "wsf_config.h"
 #include "wsf_proc.h"
+
+/*
+ * The library is built with -fvisibility=hidden (see src/meson.build) so
+ * only the libinput entry points we interpose are exported. Each wrapper
+ * below is tagged WSF_EXPORT; everything else stays internal.
+ */
+#define WSF_EXPORT __attribute__((visibility("default")))
 
 struct libinput_event;
 struct libinput_event_pointer;
@@ -93,10 +102,18 @@ static bool wsf_is_launcher = false;
 static bool wsf_is_gnome_shell = false;
 static bool wsf_scroll_active = false;
 static bool wsf_gesture_active = false;
-static double wsf_scroll_vertical_factor = WSF_FACTOR_DEFAULT;
-static double wsf_scroll_horizontal_factor = WSF_FACTOR_DEFAULT;
-static double wsf_pinch_zoom_factor = WSF_FACTOR_DEFAULT;
-static double wsf_pinch_rotate_factor = WSF_FACTOR_DEFAULT;
+/*
+ * The four effective factors are the only state written AFTER init: the
+ * live-reload path (wsf_reload_factors_if_needed) updates them from
+ * whichever thread next calls an interposed libinput getter, while other
+ * getter calls read them. _Atomic makes that reader/writer overlap a
+ * defined relaxed access instead of a C11 data race — this library runs
+ * inside the compositor, so "benign on x86" is not a good enough excuse.
+ */
+static _Atomic double wsf_scroll_vertical_factor = WSF_FACTOR_DEFAULT;
+static _Atomic double wsf_scroll_horizontal_factor = WSF_FACTOR_DEFAULT;
+static _Atomic double wsf_pinch_zoom_factor = WSF_FACTOR_DEFAULT;
+static _Atomic double wsf_pinch_rotate_factor = WSF_FACTOR_DEFAULT;
 static bool wsf_init_done = false;
 static bool wsf_config_seen = false;
 static bool wsf_config_present = false;
@@ -475,6 +492,7 @@ static void wsf_apply_effective_factors(bool log_change) {
 }
 
 static void wsf_reload_factors_if_needed(void) {
+	static atomic_flag reloading = ATOMIC_FLAG_INIT;
 	struct timespec mtime = {0};
 	long long now_ms = 0;
 	bool present = false;
@@ -489,6 +507,16 @@ static void wsf_reload_factors_if_needed(void) {
 		now_ms - wsf_last_config_check_ms < 250) {
 		return;
 	}
+
+	/*
+	 * Single-writer: if another thread is already inside the reload, skip
+	 * rather than re-enter. The throttle + snapshot below are not worth
+	 * racing two event threads over.
+	 */
+	if (atomic_flag_test_and_set(&reloading)) {
+		return;
+	}
+
 	wsf_last_config_check_ms = now_ms;
 
 	(void) wsf_config_snapshot(&mtime, &present);
@@ -498,6 +526,7 @@ static void wsf_reload_factors_if_needed(void) {
 		wsf_config_present = present;
 		wsf_config_mtime = mtime;
 		wsf_apply_effective_factors(false);
+		atomic_flag_clear(&reloading);
 		return;
 	}
 
@@ -508,7 +537,20 @@ static void wsf_reload_factors_if_needed(void) {
 
 	wsf_config_present = present;
 	wsf_config_mtime = mtime;
-	wsf_apply_effective_factors(changed);
+
+	/*
+	 * Only re-read + re-parse the config file when its mtime actually
+	 * changed. Previously wsf_apply_effective_factors ran every 250 ms
+	 * during scrolling regardless, doing a synchronous fopen/getline/parse
+	 * (plus newlocale x5) on $HOME from gnome-shell's input path — a stall
+	 * on a network/automounted home would freeze scroll handling. The
+	 * cheap stat above stays as the change detector.
+	 */
+	if (changed) {
+		wsf_apply_effective_factors(true);
+	}
+
+	atomic_flag_clear(&reloading);
 }
 
 static void *wsf_load_symbol(const char *name) {
@@ -660,14 +702,25 @@ static void wsf_init_internal(void) {
 	);
 }
 
-__attribute__((constructor)) static void wsf_init(void) {
+/*
+ * pthread_once guarantees wsf_init_internal runs exactly once even if two
+ * threads hit an interposed getter before the constructor-driven init has
+ * finished — otherwise a second thread could observe half-initialized
+ * function pointers. The wsf_init_done flag inside wsf_init_internal is now
+ * belt-and-suspenders.
+ */
+static pthread_once_t wsf_init_once = PTHREAD_ONCE_INIT;
+
+static void wsf_run_init_once(void) {
 	wsf_init_internal();
 }
 
+__attribute__((constructor)) static void wsf_init(void) {
+	pthread_once(&wsf_init_once, wsf_run_init_once);
+}
+
 static void wsf_ensure_init(void) {
-	if (!wsf_init_done) {
-		wsf_init_internal();
-	}
+	pthread_once(&wsf_init_once, wsf_run_init_once);
 }
 
 static double wsf_scroll_factor_for_axis(wsf_axis_t axis) {
@@ -764,7 +817,7 @@ static bool wsf_should_scale_scroll_value(
 	return wsf_should_scale_scroll(event, factor);
 }
 
-double libinput_event_pointer_get_axis_value(
+WSF_EXPORT double libinput_event_pointer_get_axis_value(
 	struct libinput_event_pointer *event,
 	wsf_axis_t axis
 ) {
@@ -818,7 +871,7 @@ double libinput_event_pointer_get_axis_value(
 	return value * factor;
 }
 
-double libinput_event_pointer_get_axis_value_discrete(
+WSF_EXPORT double libinput_event_pointer_get_axis_value_discrete(
 	struct libinput_event_pointer *event,
 	wsf_axis_t axis
 ) {
@@ -852,7 +905,7 @@ double libinput_event_pointer_get_axis_value_discrete(
 	return value * factor;
 }
 
-double libinput_event_pointer_get_scroll_value(
+WSF_EXPORT double libinput_event_pointer_get_scroll_value(
 	struct libinput_event_pointer *event,
 	wsf_axis_t axis
 ) {
@@ -906,7 +959,7 @@ double libinput_event_pointer_get_scroll_value(
 	return value * factor;
 }
 
-double libinput_event_pointer_get_scroll_value_v120(
+WSF_EXPORT double libinput_event_pointer_get_scroll_value_v120(
 	struct libinput_event_pointer *event,
 	wsf_axis_t axis
 ) {
@@ -960,7 +1013,7 @@ double libinput_event_pointer_get_scroll_value_v120(
 	return value * factor;
 }
 
-double libinput_event_gesture_get_scale(struct libinput_event_gesture *event) {
+WSF_EXPORT double libinput_event_gesture_get_scale(struct libinput_event_gesture *event) {
 	double scale = 1.0;
 
 	wsf_ensure_init();
@@ -989,7 +1042,7 @@ double libinput_event_gesture_get_scale(struct libinput_event_gesture *event) {
 	return 1.0 + (scale - 1.0) * wsf_pinch_zoom_factor;
 }
 
-double libinput_event_gesture_get_angle_delta(struct libinput_event_gesture *event) {
+WSF_EXPORT double libinput_event_gesture_get_angle_delta(struct libinput_event_gesture *event) {
 	double delta = 0.0;
 
 	wsf_ensure_init();
