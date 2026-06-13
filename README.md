@@ -103,6 +103,36 @@ sudo apt install "./wayland-scroll-factor_${version}-1_amd64.deb"
 
 This currently targets `amd64`.
 
+### NixOS via Flake
+
+The project is available via a Nix flake from this repository. Add it to your flake.nix file like so
+
+```nix
+
+{
+  description = "WSF Flake";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    wsf = {
+      url = "github:daniel-g-carrasco/wayland-scroll-factor";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+  outputs = { nixpkgs, wsf, ... }: {
+    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        wsf.nixosModules.default
+        { programs.wsf.enable = true; }
+        ./configuration.nix # The rest of your configuration
+      ];
+    };
+  };
+}
+
+```
+
+
 ### openSUSE, Gentoo, And Other Distros
 
 Use the source install for now. Package names for build dependencies are listed
