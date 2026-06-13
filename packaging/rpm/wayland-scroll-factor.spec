@@ -1,5 +1,5 @@
 Name:           wayland-scroll-factor
-Version:        0.3.3
+Version:        0.3.4
 Release:        1%{?dist}
 Summary:        Touchpad scroll and gesture tuning for Wayland
 
@@ -63,6 +63,17 @@ appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.m
 %{_datadir}/wayland-scroll-factor/hyprland/wsf.lua
 
 %changelog
+* Sat Jun 13 2026 Daniel Grasso <daniel@the-empty.place> - 0.3.4-1
+- Preload hardening: thread-safe init (pthread_once) and atomic runtime
+  factors; stop re-reading/parsing the config on every 250 ms reload tick
+  during scrolling (only re-parse when the file actually changed).
+- Bounded config parsing (256-byte lines, 64 KiB file ceiling).
+- Atomic environment.d writes; `wsf enable` preserves foreign LD_PRELOAD;
+  WSF_LIB_PATH is validated before use.
+- Build hardening: PIE, stack-protector-strong, FORTIFY_SOURCE=2, RELRO,
+  hidden symbol visibility (only the 6 interposed libinput wrappers
+  exported).
+
 * Thu Jun 11 2026 Daniel Grasso <daniel@the-empty.place> - 0.3.3-1
 - Add GitHub Release asset workflow and package publication documentation.
 - Add RPM and Debian package build test automation.
