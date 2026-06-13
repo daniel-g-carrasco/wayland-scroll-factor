@@ -19,6 +19,12 @@
 static bool wsf_run_command(const char *cmd, char *buf, size_t len);
 static bool wsf_run_command_ok(const char *cmd);
 
+/* Project version, injected by meson (-DWSF_VERSION="x.y.z"). The
+ * fallback keeps a hand-run gcc build compiling. */
+#ifndef WSF_VERSION
+#define WSF_VERSION "unknown"
+#endif
+
 #define WSF_HYPRLAND_SCROLL_FACTOR_MAX 2.0
 #define WSF_ENV_VALUE_MAX 32768
 
@@ -864,6 +870,7 @@ static void wsf_print_usage(const char *prog) {
 	fprintf(stderr, "  disable        Disable preload via environment.d\n");
 	fprintf(stderr, "  status [--json] Show current status\n");
 	fprintf(stderr, "  doctor [--json] Print diagnostics\n");
+	fprintf(stderr, "  version        Print the wayland-scroll-factor version\n");
 }
 
 static bool wsf_parse_factor_arg(const char *arg, double *out_factor) {
@@ -1523,6 +1530,9 @@ static int wsf_cmd_status(bool json) {
 		}
 
 		printf("{");
+		printf("\"wsf_version\":");
+		wsf_print_json_string(WSF_VERSION);
+		printf(",");
 		printf("\"enabled\":%s,",
 			(env_present || runtime.user_manager_matches) ?
 			"true" : "false");
@@ -1572,6 +1582,7 @@ static int wsf_cmd_status(bool json) {
 		return 0;
 	}
 
+	printf("wsf version: %s\n", WSF_VERSION);
 	if (env_present) {
 		printf("enabled: yes\n");
 	} else if (runtime.user_manager_matches) {
@@ -2196,6 +2207,9 @@ static int wsf_cmd_doctor(bool json) {
 
 	if (json) {
 		printf("{");
+		printf("\"wsf_version\":");
+		wsf_print_json_string(WSF_VERSION);
+		printf(",");
 		printf("\"session\":");
 		wsf_print_json_string(session);
 		printf(",");
@@ -2307,6 +2321,7 @@ static int wsf_cmd_doctor(bool json) {
 		return 0;
 	}
 
+	wsf_print_kv("wsf-version", WSF_VERSION);
 	wsf_print_kv("session", session);
 	wsf_print_kv("desktop", desktop);
 	if (wsf_run_command("gnome-shell --version 2>/dev/null", gnome, sizeof(gnome))) {
@@ -2450,6 +2465,12 @@ int main(int argc, char **argv) {
 	}
 
 	cmd = argv[1];
+	if (strcmp(cmd, "version") == 0 ||
+	    strcmp(cmd, "--version") == 0 ||
+	    strcmp(cmd, "-V") == 0) {
+		printf("wayland-scroll-factor %s\n", WSF_VERSION);
+		return 0;
+	}
 	if (strcmp(cmd, "set") == 0) {
 		if (argc < 3) {
 			fprintf(stderr, "Missing factor.\n");
