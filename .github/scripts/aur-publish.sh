@@ -11,6 +11,10 @@
 #   version at build time on the user's machine); kept current so a PKGBUILD
 #   change reaches the AUR too. A no-op push when nothing changed.
 #
+# All writes happen inside the AUR clone under $HOME (builder-owned); the
+# checked-out repo at $REPO_ROOT is only ever read, so the runner's post-job
+# git cleanup keeps working on it.
+#
 # The AUR packages must already exist and the deploy key's account must be a
 # (co-)maintainer. TAG is provided by the workflow (e.g. v0.3.5).
 set -euo pipefail
@@ -28,10 +32,10 @@ mkdir -p "$WORK"
 cd "$WORK"
 
 # Publish one AUR package: clone (or init if it does not exist yet), copy the
-# packaging files, regenerate .SRCINFO, commit + push only when something
-# actually changed.
+# packaging files in, optionally pin the version from the release tarball,
+# regenerate .SRCINFO, and commit + push only when something actually changed.
 publish() {
-	local aur_name="$1" src_dir="$2"
+	local aur_name="$1" src_dir="$2" pin_version="${3:-}"
 	local remote="ssh://aur@aur.archlinux.org/${aur_name}.git"
 
 	echo "==> ${aur_name}"
@@ -48,6 +52,21 @@ publish() {
 		cp "$REPO_ROOT/$src_dir/wayland-scroll-factor.install" "$aur_name/"
 	fi
 
+	# Pin the stable package's version + checksum from the release tarball.
+	# Done on the clone's copy so $REPO_ROOT stays read-only.
+	if [ -n "$pin_version" ]; then
+		local url sha
+		url="${PROJECT_URL}/archive/refs/tags/v${pin_version}.tar.gz"
+		echo "    hashing release tarball: ${url}"
+		sha="$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)"
+		[ -n "$sha" ] || { echo "failed to hash release tarball" >&2; return 1; }
+		sed -i \
+			-e "s/^pkgver=.*/pkgver=${pin_version}/" \
+			-e "s/^pkgrel=.*/pkgrel=1/" \
+			-e "s/^sha256sums=.*/sha256sums=('${sha}')/" \
+			"$aur_name/PKGBUILD"
+	fi
+
 	( cd "$aur_name" && makepkg --printsrcinfo > .SRCINFO )
 
 	git -C "$aur_name" add -A
@@ -60,21 +79,10 @@ publish() {
 	echo "    pushed ${aur_name} @ ${VER}"
 }
 
-# --- stable: pin version + checksum from the release tarball ---
-tarball_url="${PROJECT_URL}/archive/refs/tags/${TAG}.tar.gz"
-echo "Hashing release tarball: ${tarball_url}"
-sha="$(curl -fsSL "$tarball_url" | sha256sum | cut -d' ' -f1)"
-[ -n "$sha" ] || { echo "failed to hash release tarball" >&2; exit 1; }
+# stable: pinned to the tag's release tarball.
+publish "wayland-scroll-factor" "packaging/aur-stable" "$VER"
 
-sed -i \
-	-e "s/^pkgver=.*/pkgver=${VER}/" \
-	-e "s/^pkgrel=.*/pkgrel=1/" \
-	-e "s/^sha256sums=.*/sha256sums=('${sha}')/" \
-	"$REPO_ROOT/packaging/aur-stable/PKGBUILD"
-
-publish "wayland-scroll-factor" "packaging/aur-stable"
-
-# --- -git: publish as-is (version is computed at build time) ---
+# -git: published as-is (version is computed at build time).
 publish "wayland-scroll-factor-git" "packaging/aur"
 
 echo "AUR publish complete for ${TAG}"
