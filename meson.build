@@ -1,7 +1,7 @@
 project(
   'wayland-scroll-factor',
   'c',
-  version: '0.3.4',
+  version: '0.3.5',
   default_options: [
     'warning_level=2',
     'c_std=c11',
@@ -34,6 +34,7 @@ add_project_link_arguments(hardening_link_args, language: 'c')
 
 wsf_libdir = join_paths(get_option('prefix'), get_option('libdir'), 'wayland-scroll-factor')
 wsf_libdir_define = '-DWSF_LIBDIR="' + wsf_libdir + '"'
+wsf_version_define = '-DWSF_VERSION="' + meson.project_version() + '"'
 
 subdir('src')
 subdir('tools')

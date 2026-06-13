@@ -10,7 +10,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 APP_ID = "io.github.danielgrasso.WaylandScrollFactor"
 FACTOR_MIN = 0.05
@@ -35,6 +35,7 @@ class WsfWindow(Adw.ApplicationWindow):
         self.set_default_size(560, 640)
 
         self._cli_path = self._find_wsf()
+        self._version = self._get_version()
         self._debounce_ids = {}
         self._loading = True
         self._last_doctor_output = ""
@@ -52,7 +53,24 @@ class WsfWindow(Adw.ApplicationWindow):
 
         header = Adw.HeaderBar()
         header.set_show_end_title_buttons(True)
-        header.set_title_widget(Adw.WindowTitle(title="Wayland Scroll Factor"))
+        window_title = Adw.WindowTitle(title="Wayland Scroll Factor")
+        if self._version:
+            window_title.set_subtitle(f"v{self._version}")
+        header.set_title_widget(window_title)
+
+        # Primary menu with an About entry (version lives there too).
+        menu = Gio.Menu()
+        menu.append("About Wayland Scroll Factor", "win.about")
+        menu_button = Gtk.MenuButton()
+        menu_button.set_icon_name("open-menu-symbolic")
+        menu_button.set_menu_model(menu)
+        menu_button.set_tooltip_text("Main menu")
+        header.pack_end(menu_button)
+
+        about_action = Gio.SimpleAction.new("about", None)
+        about_action.connect("activate", self._on_about)
+        self.add_action(about_action)
+
         toolbar_view.add_top_bar(header)
 
         if not self._cli_path:
@@ -366,6 +384,39 @@ class WsfWindow(Adw.ApplicationWindow):
             )
         except OSError:
             return None
+
+    def _get_version(self):
+        # Single source of truth: ask the installed CLI, so the GUI can
+        # never disagree with the wsf binary it drives.
+        result = self._run_wsf(["version"])
+        if result and result.returncode == 0 and result.stdout:
+            parts = result.stdout.strip().split()
+            if parts:
+                return parts[-1]
+        return None
+
+    def _on_about(self, *_args):
+        version = self._version or "unknown"
+        kwargs = {
+            "application_name": "Wayland Scroll Factor",
+            "application_icon": APP_ID,
+            "version": version,
+            "developer_name": "Daniel Grasso",
+            "website": "https://github.com/daniel-g-carrasco/wayland-scroll-factor",
+            "issue_url": (
+                "https://github.com/daniel-g-carrasco/"
+                "wayland-scroll-factor/issues"
+            ),
+            "license_type": Gtk.License.MIT_X11,
+        }
+        # Adw.AboutDialog is the modern (libadwaita 1.5+) widget; fall back
+        # to Adw.AboutWindow on older runtimes (Debian stable, etc.).
+        if hasattr(Adw, "AboutDialog"):
+            about = Adw.AboutDialog(**kwargs)
+            about.present(self)
+        else:
+            about = Adw.AboutWindow(transient_for=self, **kwargs)
+            about.present()
 
     def _find_wsf(self):
         path = shutil.which("wsf")

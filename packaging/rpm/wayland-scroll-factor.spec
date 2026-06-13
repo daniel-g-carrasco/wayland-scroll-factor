@@ -1,5 +1,5 @@
 Name:           wayland-scroll-factor
-Version:        0.3.4
+Version:        0.3.5
 Release:        1%{?dist}
 Summary:        Touchpad scroll and gesture tuning for Wayland
 
@@ -63,6 +63,11 @@ appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.m
 %{_datadir}/wayland-scroll-factor/hyprland/wsf.lua
 
 %changelog
+* Sat Jun 13 2026 Daniel Grasso <daniel@the-empty.place> - 0.3.5-1
+- Show the version everywhere: `wsf version` / `wsf --version`, a
+  `wsf_version`/`wsf-version` field in `status` and `doctor` (text and
+  --json), and a GTK About dialog plus a version subtitle in the GUI.
+
 * Sat Jun 13 2026 Daniel Grasso <daniel@the-empty.place> - 0.3.4-1
 - Preload hardening: thread-safe init (pthread_once) and atomic runtime
   factors; stop re-reading/parsing the config on every 250 ms reload tick
