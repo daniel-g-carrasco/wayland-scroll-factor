@@ -96,6 +96,10 @@ jobs:
                 > /home/builder/.ssh/known_hosts 2>/dev/null
               printf "Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n  IdentitiesOnly yes\n" \
                 > /home/builder/.ssh/config
-              chown -R builder:builder /home/builder/.ssh /work
+              # Only chown the keys. /work is left runner-owned (builder just
+              # reads it) so the post-job git cleanup on the checkout still
+              # works — chowning /work/.git was what produced the harmless
+              # "could not lock config file" errors at the end of the run.
+              chown -R builder:builder /home/builder/.ssh
               su builder -c "TAG=$TAG REPO_ROOT=/work /work/.github/scripts/aur-publish.sh"
             '
