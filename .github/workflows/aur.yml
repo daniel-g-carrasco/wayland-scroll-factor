@@ -54,11 +54,16 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check out the tag
+      # Check out the triggering ref for the packaging templates + the
+      # publish script — NOT the input tag. On a tag push that ref already
+      # is the tag; on a manual dispatch it is the default branch. Checking
+      # out the input tag breaks bootstrapping a tag that predates this
+      # workflow (the script would be absent from that older tree). The
+      # package SOURCE is still pinned to the tag: the script downloads the
+      # release tarball for $TAG and hashes it.
+      - name: Check out packaging + scripts
         if: steps.tag.outputs.skip != 'true'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Publish (stable + -git) to the AUR
         if: steps.tag.outputs.skip != 'true'
