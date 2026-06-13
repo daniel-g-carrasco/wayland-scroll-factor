@@ -45,8 +45,16 @@ jobs:
 
       - name: Static analysis (cppcheck)
         run: |
+          # -DWSF_LIBDIR mirrors meson's compile-time define (meson.build:
+          # `-DWSF_LIBDIR="<libdir>/wayland-scroll-factor"`, passed only to
+          # the tools target). Without it cppcheck explores the
+          # `#ifdef WSF_LIBDIR` branch with the macro auto-assumed as int 1,
+          # producing a bogus `%s requires char*` on the snprintf in
+          # wsf_lib_path. The value is irrelevant to the analysis; it only
+          # has to be the string literal the real build uses.
           cppcheck --enable=warning,performance,portability \
             --inline-suppr --error-exitcode=2 --quiet -I src \
+            -DWSF_LIBDIR='"/usr/lib/wayland-scroll-factor"' \
             src/ tools/wsf.c
 
       - name: Build (warnings are errors)
