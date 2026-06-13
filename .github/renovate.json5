@@ -1,0 +1,14 @@
+// Renovate — same config as the margine repos: GHA digest pinning via
+// the best-practices preset, automerge for pure pin/digest updates.
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "rebaseWhen": "never",
+  "packageRules": [
+    {
+      "description": "Auto-merge pure pin/digest updates",
+      "matchUpdateTypes": ["pin", "pinDigest"],
+      "automerge": true
+    }
+  ]
+}
