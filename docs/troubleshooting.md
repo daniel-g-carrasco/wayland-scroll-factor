@@ -48,6 +48,34 @@ If GNOME and GTK apps change but the affected app does not, include the app
 name, install method, Wayland/XWayland status, and `wsf doctor` output in the
 issue.
 
+### Chromium apps scroll faster at the same factor (known, not a WSF bug)
+
+Chromium and Electron apps (Chrome, Brave, VS Code, ...) feel much faster than
+GTK apps at the same factor, so users end up wanting a far lower value for
+them (issue #29). The cause is inside Chromium, not in WSF: its Wayland
+backend converts every `wl_pointer.axis` value with
+
+```c
+delta = value / kAxisValueScale * kWheelDelta   // value / 10 * 53 px
+```
+
+(`ui/ozone/platform/wayland/host/wayland_pointer.cc`), that is a fixed x5.3
+multiplier applied to whatever the compositor sends, touchpad included. GTK
+maps the same wire values with its own, smaller constants.
+
+WSF scales the values BEFORE they reach any client, and it scales them
+uniformly. Verified on the wire (GNOME 48, factor 0.25): the same swipe
+delivered per-event deltas with identical medians and maxima to a GTK app and
+to Chromium under `WAYLAND_DEBUG=1`. So the REDUCTION RATIO is uniform across
+toolkits; what differs is each toolkit's base speed, exactly as it differs
+without WSF installed. A factor tuned for GTK comfort will always leave
+Chromium ~5x faster, because Chromium is ~5x faster to begin with.
+
+To verify on your own system: run the affected app and a GTK app with
+`WAYLAND_DEBUG=1 2>log`, do one identical swipe over each, and compare the
+`wl_pointer#N.axis(...)` values in both logs. Identical values on the wire
+mean the difference is client-side interpretation, out of WSF's reach.
+
 ## Hyprland
 
 - Run `wsf status` and confirm it reports `hyprland: running`.
