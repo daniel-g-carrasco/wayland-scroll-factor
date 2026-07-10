@@ -76,6 +76,20 @@ To verify on your own system: run the affected app and a GTK app with
 `wl_pointer#N.axis(...)` values in both logs. Identical values on the wire
 mean the difference is client-side interpretation, out of WSF's reach.
 
+Practical remedies on the client side, where they exist:
+
+- **VS Code** (and Electron editors with the same settings): set
+  `editor.mouseWheelScrollSensitivity`,
+  `workbench.list.mouseWheelScrollSensitivity` and
+  `terminal.integrated.mouseWheelScrollSensitivity` to `0.2`
+  (1 / 5.3, the inverse of Chromium's multiplier). Verified: with these,
+  VS Code matches the GTK feel at the same WSF factor.
+- **Chrome / Brave**: no native setting and no official flag; extensions
+  such as "Scroll Speed" or SmoothScroll adjust web content (not the
+  browser UI).
+- **Electron apps without such settings** (Discord, ...): no client-side
+  knob today.
+
 ## Hyprland
 
 - Run `wsf status` and confirm it reports `hyprland: running`.
