@@ -43,10 +43,10 @@ class WsfWindow(Adw.ApplicationWindow):
         super().__init__(application=app)
         self.set_title("Wayland Scroll Factor")
         self.set_default_size(560, 480)
-        # Below ~460px the slider rows have no room left for the title and
+        # Below ~500px the slider rows have no room left for the title and
         # libadwaita starts wrapping it letter by letter; a realistic floor
         # keeps every row on one line (title-lines=1 guards the rest).
-        self.set_size_request(460, -1)
+        self.set_size_request(500, -1)
 
         self._cli_path = self._find_wsf()
         self._version = self._get_version()
@@ -100,6 +100,10 @@ class WsfWindow(Adw.ApplicationWindow):
         toolbar_view.set_content(page)
 
         self._sliders = {}
+        # One shared width for the scale+spin+undo cluster of every row:
+        # without this each ActionRow splits its own leftover space and
+        # the four sliders end up with four different lengths.
+        self._suffix_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         scroll_group = Adw.PreferencesGroup(title="Scroll Sensitivity")
         scroll_group.set_description("1.00 is the system default speed")
         page.add(scroll_group)
@@ -135,9 +139,8 @@ class WsfWindow(Adw.ApplicationWindow):
 
         scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=adjustment)
         scale.set_draw_value(False)
-        scale.set_hexpand(True)
         scale.set_valign(Gtk.Align.CENTER)
-        scale.set_size_request(140, -1)
+        scale.set_size_request(200, -1)
         scale.add_mark(DEFAULT_FACTOR, Gtk.PositionType.BOTTOM, None)
         self._set_accessible_name(scale, title)
 
@@ -154,9 +157,12 @@ class WsfWindow(Adw.ApplicationWindow):
         undo.connect("clicked", self._on_reset_clicked, key)
         self._set_accessible_name(undo, f"Reset {title}")
 
-        row.add_suffix(scale)
-        row.add_suffix(spin)
-        row.add_suffix(undo)
+        suffix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        suffix_box.append(scale)
+        suffix_box.append(spin)
+        suffix_box.append(undo)
+        self._suffix_group.add_widget(suffix_box)
+        row.add_suffix(suffix_box)
         row.set_activatable(False)
 
         adjustment.connect("value-changed", self._on_adjustment_changed, key)
