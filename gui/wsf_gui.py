@@ -42,8 +42,11 @@ class WsfWindow(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app)
         self.set_title("Wayland Scroll Factor")
-        self.set_default_size(520, 480)
-        self.set_size_request(360, -1)
+        self.set_default_size(560, 480)
+        # Below ~460px the slider rows have no room left for the title and
+        # libadwaita starts wrapping it letter by letter; a realistic floor
+        # keeps every row on one line (title-lines=1 guards the rest).
+        self.set_size_request(460, -1)
 
         self._cli_path = self._find_wsf()
         self._version = self._get_version()
@@ -117,6 +120,8 @@ class WsfWindow(Adw.ApplicationWindow):
 
     def _build_factor_row(self, key, title, icon_name):
         row = Adw.ActionRow(title=title)
+        if hasattr(row, "set_title_lines"):
+            row.set_title_lines(1)
         row.add_prefix(Gtk.Image.new_from_icon_name(icon_name))
 
         adjustment = Gtk.Adjustment(
@@ -132,14 +137,14 @@ class WsfWindow(Adw.ApplicationWindow):
         scale.set_draw_value(False)
         scale.set_hexpand(True)
         scale.set_valign(Gtk.Align.CENTER)
-        scale.set_size_request(160, -1)
+        scale.set_size_request(140, -1)
         scale.add_mark(DEFAULT_FACTOR, Gtk.PositionType.BOTTOM, None)
         self._set_accessible_name(scale, title)
 
         spin = Gtk.SpinButton(adjustment=adjustment, climb_rate=0.05, digits=2)
         spin.set_numeric(True)
         spin.set_valign(Gtk.Align.CENTER)
-        spin.set_width_chars(5)
+        spin.set_width_chars(4)
         self._set_accessible_name(spin, f"{title} value")
 
         undo = Gtk.Button.new_from_icon_name("edit-undo-symbolic")
