@@ -26,13 +26,10 @@ Pushing a `v*` tag runs the `GitHub Release` workflow. It builds RPM, SRPM, and
 Debian packages, generates `SHA256SUMS`, and attaches those files to the GitHub
 Release.
 
-COPR publication is manual:
-
-```text
-Actions -> Publish COPR -> Run workflow
-```
-
-It requires the `COPR_CONFIG` repository secret described in `docs/copr.md`.
+COPR publication is automatic on the same `v*` tag (like the AUR publish);
+`Actions -> Publish COPR -> Run workflow` remains as a manual fallback. Both
+require their repository secrets (`COPR_CONFIG`, see `docs/copr.md`, and
+`AUR_SSH_KEY`).
 
 ## Container Smoke Tests
 

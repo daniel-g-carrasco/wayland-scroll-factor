@@ -1,6 +1,13 @@
 name: Publish COPR
 
+# Runs automatically on every release tag (v*) so COPR tracks releases
+# without a manual step (gap found at 1.0.0: AUR and the GitHub Release
+# were tag-triggered, COPR was dispatch-only and got forgotten).
+# workflow_dispatch stays as the manual fallback/override.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       project:
@@ -17,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: copr-${{ inputs.project }}
+  group: copr-${{ inputs.project || 'wayland-scroll-factor' }}
   cancel-in-progress: false
 
 jobs:
@@ -47,8 +54,11 @@ jobs:
       - name: Submit SRPM to COPR
         env:
           COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
-          COPR_PROJECT: ${{ inputs.project }}
-          COPR_NOWAIT: ${{ inputs.nowait }}
+          # Tag runs have no inputs: fall back to the standard project.
+          # The nowait expression keeps an explicit dispatch-time `false`
+          # working (a bare `inputs.nowait || true` would swallow it).
+          COPR_PROJECT: ${{ inputs.project || 'wayland-scroll-factor' }}
+          COPR_NOWAIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.nowait == false) && 'false' || 'true' }}
         run: |
           set -euo pipefail
 
