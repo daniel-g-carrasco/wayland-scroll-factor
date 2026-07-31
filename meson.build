@@ -32,6 +32,14 @@ hardening_link_args = cc.get_supported_link_arguments(
 add_project_arguments(hardening_c_args, language: 'c')
 add_project_link_arguments(hardening_link_args, language: 'c')
 
+# Hyprland support is an unsupported opt-in module (no maintainer
+# coverage); default builds carry no Hyprland behavior and install no
+# Hyprland files. Configure with -Dhyprland=enabled to opt in.
+hyprland_enabled = get_option('hyprland').enabled()
+if hyprland_enabled
+  add_project_arguments('-DWSF_ENABLE_HYPRLAND=1', language: 'c')
+endif
+
 wsf_libdir = join_paths(get_option('prefix'), get_option('libdir'), 'wayland-scroll-factor')
 wsf_libdir_define = '-DWSF_LIBDIR="' + wsf_libdir + '"'
 wsf_version_define = '-DWSF_VERSION="' + meson.project_version() + '"'

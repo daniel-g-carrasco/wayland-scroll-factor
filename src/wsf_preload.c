@@ -30,6 +30,12 @@
  */
 #define WSF_EXPORT __attribute__((visibility("default")))
 
+/* Injected by meson when configured with -Dhyprland=enabled; the
+ * fallback keeps hyprland support compiled out by default. */
+#ifndef WSF_ENABLE_HYPRLAND
+#define WSF_ENABLE_HYPRLAND 0
+#endif
+
 struct libinput_event;
 struct libinput_event_pointer;
 struct libinput_event_gesture;
@@ -291,14 +297,16 @@ static void wsf_configure_activity(void) {
 	const char *targets = getenv("WSF_TARGETS");
 	bool has_targets = targets != NULL && targets[0] != '\0';
 	bool is_gnome_shell = wsf_proc_matches("gnome-shell");
-	bool is_hyprland = wsf_proc_matches("Hyprland");
 	bool targeted = has_targets ?
 		wsf_target_list_matches(targets) :
 		is_gnome_shell;
+#if WSF_ENABLE_HYPRLAND
+	bool is_hyprland = wsf_proc_matches("Hyprland");
 	bool hyprland_gestures = is_hyprland &&
 		(targeted ||
 		wsf_env_truthy("WSF_HYPRLAND_GESTURES") ||
 		wsf_env_truthy("WSF_HYPRLAND_GESTURES_ONLY"));
+#endif
 
 	wsf_scroll_active = false;
 	wsf_gesture_active = false;
@@ -307,10 +315,13 @@ static void wsf_configure_activity(void) {
 	if (is_gnome_shell && targeted) {
 		wsf_scroll_active = true;
 		wsf_gesture_active = true;
-	} else if (hyprland_gestures) {
+	}
+#if WSF_ENABLE_HYPRLAND
+	else if (hyprland_gestures) {
 		wsf_gesture_active = true;
 		wsf_scroll_active = wsf_env_truthy("WSF_HYPRLAND_SCROLL_PRELOAD");
 	}
+#endif
 
 	wsf_active = wsf_scroll_active || wsf_gesture_active;
 }

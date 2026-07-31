@@ -1,0 +1,6 @@
+option(
+  'hyprland',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Unsupported Hyprland add-on module'
+)

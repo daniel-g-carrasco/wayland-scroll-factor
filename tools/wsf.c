@@ -25,6 +25,12 @@ static bool wsf_run_command_ok(const char *cmd);
 #define WSF_VERSION "unknown"
 #endif
 
+/* Injected by meson when configured with -Dhyprland=enabled; the
+ * fallback keeps hyprland support compiled out by default. */
+#ifndef WSF_ENABLE_HYPRLAND
+#define WSF_ENABLE_HYPRLAND 0
+#endif
+
 #define WSF_HYPRLAND_SCROLL_FACTOR_MAX 2.0
 #define WSF_ENV_VALUE_MAX 32768
 
@@ -607,6 +613,14 @@ static bool wsf_repair_preload_setup(
 	return true;
 }
 
+/*
+ * Hyprland support is an unsupported opt-in module: it has no maintainer
+ * coverage, so it is compiled out by default. Build with
+ * -Dhyprland=enabled to restore it. The #else branch provides no-op
+ * stubs with the same signatures so call sites stay unchanged.
+ */
+#if WSF_ENABLE_HYPRLAND
+
 static bool wsf_string_contains(const char *haystack, const char *needle) {
 	return haystack != NULL && needle != NULL && strstr(haystack, needle) != NULL;
 }
@@ -850,6 +864,31 @@ static int wsf_hyprland_apply_touchpad_scroll(double factor, bool verbose) {
 	return 1;
 }
 
+#else /* !WSF_ENABLE_HYPRLAND */
+
+static const char *wsf_hyprland_scroll_apply_method_name(
+	enum wsf_hyprland_scroll_apply_method method
+) {
+	(void) method;
+	return "none";
+}
+
+static void wsf_hyprland_state_collect(struct wsf_hyprland_state *state) {
+	if (state == NULL) {
+		return;
+	}
+
+	memset(state, 0, sizeof(*state));
+}
+
+static int wsf_hyprland_apply_touchpad_scroll(double factor, bool verbose) {
+	(void) factor;
+	(void) verbose;
+	return 0;
+}
+
+#endif /* WSF_ENABLE_HYPRLAND */
+
 static void wsf_print_usage(const char *prog) {
 	fprintf(stderr, "Usage: %s <command> [args]\n", prog);
 	fprintf(stderr, "Commands:\n");
@@ -1018,6 +1057,7 @@ static int wsf_cmd_set(int argc, char **argv) {
 	return 0;
 }
 
+#if WSF_ENABLE_HYPRLAND
 static bool wsf_factor_differs(double a, double b) {
 	double diff = a - b;
 
@@ -1027,6 +1067,7 @@ static bool wsf_factor_differs(double a, double b) {
 
 	return diff > 0.0001;
 }
+#endif
 
 static bool wsf_scroll_env_override_present(void) {
 	const char *factor = getenv("WSF_FACTOR");
@@ -1052,12 +1093,14 @@ static int wsf_cmd_apply(void) {
 		return 0;
 	}
 
+#if WSF_ENABLE_HYPRLAND
 	if (wsf_factor_differs(factors.scroll_vertical, factors.scroll_horizontal)) {
 		printf(
 			"hyprland note: native backend has one touchpad scroll factor; using scroll_vertical_factor=%.4f.\n",
 			factors.scroll_vertical
 		);
 	}
+#endif
 
 	applied = wsf_hyprland_apply_touchpad_scroll(factors.scroll_vertical, true);
 	if (applied < 0) {
@@ -1316,6 +1359,11 @@ static void wsf_print_json_string(const char *value) {
 	printf("\"");
 }
 
+#if WSF_ENABLE_HYPRLAND
+
+/* The JSON printers below emit their own trailing comma so that the
+ * disabled-build stubs can print nothing without leaving a dangling
+ * separator in the surrounding object. */
 static void wsf_print_hyprland_json_field(
 	const struct wsf_hyprland_state *state
 ) {
@@ -1344,7 +1392,7 @@ static void wsf_print_hyprland_json_field(
 	);
 	printf(",");
 	printf("\"single_touchpad_scroll_factor\":true");
-	printf("}");
+	printf("},");
 }
 
 static void wsf_print_hyprland_status(
@@ -1434,7 +1482,7 @@ static void wsf_print_hyprland_preload_json_field(
 	} else {
 		wsf_print_json_string(NULL);
 	}
-	printf("}");
+	printf("},");
 }
 
 static void wsf_print_hyprland_preload_status(
@@ -1490,6 +1538,38 @@ static void wsf_print_hyprland_preload_status(
 		runtime->hyprland_library_mapped ? "active" : "inactive"
 	);
 }
+
+#else /* !WSF_ENABLE_HYPRLAND */
+
+static void wsf_print_hyprland_json_field(
+	const struct wsf_hyprland_state *state
+) {
+	(void) state;
+}
+
+static void wsf_print_hyprland_preload_json_field(
+	const struct wsf_runtime_state *runtime
+) {
+	(void) runtime;
+}
+
+static void wsf_print_hyprland_status(
+	const struct wsf_hyprland_state *state,
+	bool always
+) {
+	(void) state;
+	(void) always;
+}
+
+static void wsf_print_hyprland_preload_status(
+	const struct wsf_runtime_state *runtime,
+	bool always
+) {
+	(void) runtime;
+	(void) always;
+}
+
+#endif /* WSF_ENABLE_HYPRLAND */
 
 static int wsf_cmd_status(bool json) {
 	char env_path[512];
@@ -1564,9 +1644,7 @@ static int wsf_cmd_status(bool json) {
 		printf("\"gnome_shell_preload_matches\":%s,", runtime.gnome_shell_ld_preload_matches ? "true" : "false");
 		printf("\"gnome_shell_library_mapped\":%s,", runtime.gnome_shell_library_mapped ? "true" : "false");
 		wsf_print_hyprland_json_field(&hyprland);
-		printf(",");
 		wsf_print_hyprland_preload_json_field(&runtime);
-		printf(",");
 		printf("\"config\":");
 		wsf_print_json_string(config_path);
 		printf(",");
@@ -1925,6 +2003,7 @@ static void wsf_runtime_state_collect(
 		);
 	}
 
+#if WSF_ENABLE_HYPRLAND
 	if (wsf_find_newest_pid_by_name("Hyprland", &state->hyprland_pid)) {
 		state->hyprland_found = true;
 		if (wsf_read_pid_environ_value(
@@ -1971,6 +2050,7 @@ static void wsf_runtime_state_collect(
 			"libwsf_preload.so"
 		);
 	}
+#endif
 }
 
 static bool wsf_find_libinput_from_ldconfig(char *buf, size_t len) {
@@ -2152,8 +2232,10 @@ static int wsf_cmd_doctor(bool json) {
 	char lib_path[512];
 	char gnome[256];
 	char libinput[256];
+#if WSF_ENABLE_HYPRLAND
 	char wsf_hyprland[512];
 	char start_hyprland[512];
+#endif
 	const char *session = getenv("XDG_SESSION_TYPE");
 	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
 	const char *config_path = wsf_config_path();
@@ -2172,8 +2254,10 @@ static int wsf_cmd_doctor(bool json) {
 	struct wsf_symbol_status symbols;
 	struct wsf_runtime_state runtime;
 	struct wsf_hyprland_state hyprland;
+#if WSF_ENABLE_HYPRLAND
 	bool wsf_hyprland_found = false;
 	bool start_hyprland_found = false;
+#endif
 
 	if (!wsf_env_file_path(env_path, sizeof(env_path))) {
 		fprintf(stderr, "Failed to resolve environment.d path.\n");
@@ -2194,6 +2278,7 @@ static int wsf_cmd_doctor(bool json) {
 	wsf_symbol_status(&symbols);
 	wsf_runtime_state_collect(&runtime, lib_path);
 	wsf_hyprland_state_collect(&hyprland);
+#if WSF_ENABLE_HYPRLAND
 	wsf_hyprland_found = wsf_run_command(
 		"command -v wsf-hyprland 2>/dev/null",
 		wsf_hyprland,
@@ -2204,6 +2289,7 @@ static int wsf_cmd_doctor(bool json) {
 		start_hyprland,
 		sizeof(start_hyprland)
 	);
+#endif
 
 	if (json) {
 		printf("{");
@@ -2258,9 +2344,8 @@ static int wsf_cmd_doctor(bool json) {
 		printf("\"gnome_shell_preload_matches\":%s,", runtime.gnome_shell_ld_preload_matches ? "true" : "false");
 		printf("\"gnome_shell_library_mapped\":%s,", runtime.gnome_shell_library_mapped ? "true" : "false");
 		wsf_print_hyprland_json_field(&hyprland);
-		printf(",");
 		wsf_print_hyprland_preload_json_field(&runtime);
-		printf(",");
+#if WSF_ENABLE_HYPRLAND
 		printf("\"hyprland_launch\":{");
 		printf("\"wsf_hyprland\":");
 		wsf_print_json_string(wsf_hyprland_found ? wsf_hyprland : NULL);
@@ -2272,6 +2357,7 @@ static int wsf_cmd_doctor(bool json) {
 			(wsf_hyprland_found && start_hyprland_found) ? "true" : "false"
 		);
 		printf("},");
+#endif
 		printf("\"config\":");
 		wsf_print_json_string(config_path);
 		printf(",");
@@ -2366,6 +2452,7 @@ static int wsf_cmd_doctor(bool json) {
 	}
 	wsf_print_hyprland_status(&hyprland, true);
 	wsf_print_hyprland_preload_status(&runtime, true);
+#if WSF_ENABLE_HYPRLAND
 	if (wsf_hyprland_found) {
 		printf("hyprland WSF launcher: %s\n", wsf_hyprland);
 	} else {
@@ -2379,6 +2466,7 @@ static int wsf_cmd_doctor(bool json) {
 	} else {
 		printf("start-hyprland: not found\n");
 	}
+#endif
 	if (config_path != NULL) {
 		printf(
 			"config: %s (%s)\n",
