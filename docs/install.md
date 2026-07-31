@@ -141,7 +141,11 @@ WSF_LIB_PATH=/custom/path/libwsf_preload.so
 WSF_DEBUG=1
 ```
 
-## Hyprland
+## Hyprland (Opt-in Module)
+
+Everything in this section requires a build configured with
+`-Dhyprland=enabled`; default builds and default packages do not include it
+(see [hyprland.md](hyprland.md)).
 
 WSF uses Hyprland's native `input:touchpad:scroll_factor` setting for live
 touchpad scroll tuning:

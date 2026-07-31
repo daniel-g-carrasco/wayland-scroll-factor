@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [1.0.0] - 2026-07-31
+
+First stable release. The GNOME backend has been in daily use for months and
+the project now has a defined, supported surface: GNOME Wayland.
+
+### Added
+- Meson feature option `hyprland` (default disabled) that gates the whole
+  Hyprland integration: code, launchers, session file and Lua helper.
+
+### Changed
+- The GUI was rebuilt on current GNOME HIG: `Adw.PreferencesPage` boxed-list
+  layout, stock symbolic icons aligned as row prefixes, equal-length sliders
+  with a single default mark, a contextual per-row undo button that only
+  appears off-default, and an `Adw.SwitchRow` for the GNOME preload.
+- Diagnostics moved out of the main window: the same `wsf doctor` output now
+  fills About > Troubleshooting > Debugging Information, with copy and save
+  built in.
+
+### Removed
+- Hyprland as a supported first-class backend. Default builds carry no
+  Hyprland behavior and install no Hyprland files; `-Dhyprland=enabled`
+  restores it as an unsupported opt-in module.
+- The in-window Diagnostics panel and its Run doctor / Copy diagnostics
+  buttons (superseded by the About dialog debug info).
+
 ## [0.3.3] - 2026-06-11
 
 ### Added

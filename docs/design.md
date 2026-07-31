@@ -41,6 +41,8 @@
 
 ## Hyprland backend design
 
+> Opt-in module: everything below requires a `-Dhyprland=enabled` build; default builds do not include it (see [hyprland.md](hyprland.md)).
+
 - Objective: support Hyprland touchpad scroll tuning without patching Hyprland.
 - Mechanism: prefer Hyprland's native runtime setting
   `input:touchpad:scroll_factor` via `hyprctl`.

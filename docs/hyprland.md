@@ -1,4 +1,17 @@
-# Hyprland Backend
+# Hyprland (Opt-in Module)
+
+> Status as of 1.0.0: Hyprland support is NOT part of the supported product.
+> It is an opt-in build-time module with no maintainer coverage: it keeps
+> working as described below, but issues against it will not be prioritized
+> and it may be dropped entirely if it starts costing GNOME-side complexity.
+>
+> Default builds contain no Hyprland behavior and install no Hyprland files.
+> To opt in, build from source with:
+>
+> ```bash
+> meson setup build -Dhyprland=enabled
+> meson compile -C build
+> ```
 
 WSF has an experimental Hyprland backend for touchpad scroll tuning.
 

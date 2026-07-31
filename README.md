@@ -9,8 +9,8 @@
 
 <p align="center">
   <b>Tune touchpad scroll and gesture sensitivity on Wayland.</b><br>
-  GNOME Wayland support, plus Hyprland scroll and gesture support.<br>
-  <i>Current release: 0.3.5. Hyprland support is usable, but still newer than the GNOME backend.</i>
+  Built for GNOME Wayland.<br>
+  <i>Current release: 1.0.0, the first stable release.</i>
 </p>
 
 ---
@@ -27,15 +27,14 @@ It can tune:
 - pinch rotate.
 
 WSF is designed to be reversible. It does not use `/etc/ld.so.preload`, and it
-does not patch GNOME, Hyprland, libinput, or your kernel.
+does not patch GNOME, libinput, or your kernel.
 
 ## Desktop Support
 
 | Desktop | Status | Notes |
 | --- | --- | --- |
 | GNOME Wayland | Supported | Uses a guarded preload backend loaded into `gnome-shell`. |
-| Hyprland | Supported | Uses Hyprland's native scroll setting and an optional gesture preload session. |
-| Hyprland Lua config | Supported | WSF uses `hyprctl eval` when `hyprctl keyword` is not accepted. |
+| Hyprland | Opt-in module, unsupported | Disabled by default; build with `-Dhyprland=enabled`. See [docs/hyprland.md](docs/hyprland.md). |
 | KDE Plasma / KWin | Not yet | Planned, but not implemented. |
 | wlroots compositors | Not yet | Planned, but compositor-specific behavior still needs work. |
 | X11 | Not a target | WSF is designed for Wayland compositors. |
@@ -224,61 +223,19 @@ wsf disable
 
 Then log out and log back in.
 
-## Hyprland
+## Hyprland (Opt-in Module)
 
-Hyprland scroll tuning is live:
-
-```bash
-wsf set 0.35
-wsf apply
-```
-
-Hyprland currently exposes one native touchpad scroll factor shared by vertical
-and horizontal scrolling. For that reason, WSF keeps those two scroll values in
-sync when running under Hyprland.
-
-For pinch zoom and pinch rotate, launch the dedicated session installed by WSF:
-
-```text
-Hyprland (WSF gestures)
-```
-
-Select it from your greeter. This starts Hyprland through WSF's
-`start-hyprland`-compatible launcher without rewriting `greetd`, SDDM, GDM, or
-other login-manager configuration.
-
-Check activation:
+Hyprland support is no longer part of the supported product: nobody was using
+it and it has no maintainer coverage. The code remains available as an
+unsupported opt-in module for anyone who wants it:
 
 ```bash
-wsf doctor
+meson setup build -Dhyprland=enabled
 ```
 
-Look for:
-
-```text
-hyprland gesture preload: active
-```
-
-Hyprland reloads can overwrite runtime scroll settings with values from the
-static config. If WSF should manage scroll speed, remove or comment out static
-`scroll_factor` entries from your Hyprland config, or intentionally keep them
-in sync with WSF.
-
-For Hyprland 0.55+ Lua configs, WSF packages install a generic helper:
-
-```lua
-dofile("/usr/share/wayland-scroll-factor/hyprland/wsf.lua")
-```
-
-For per-user source installs:
-
-```lua
-dofile(os.getenv("HOME") .. "/.local/share/wayland-scroll-factor/hyprland/wsf.lua")
-```
-
-The helper reapplies saved WSF scroll settings after Lua config reloads.
-
-More details are in [docs/hyprland.md](docs/hyprland.md).
+That restores the native scroll backend, the gesture preload session and the
+Lua helper exactly as they were. Default builds carry no Hyprland behavior and
+install no Hyprland files. Details and caveats: [docs/hyprland.md](docs/hyprland.md).
 
 ## Configuration
 
@@ -340,7 +297,7 @@ rm -rf ~/.config/wayland-scroll-factor
 
 - [Install details](docs/install.md)
 - [Dependencies](docs/dependencies.md)
-- [Hyprland backend](docs/hyprland.md)
+- [Hyprland opt-in module](docs/hyprland.md)
 - [How WSF works](docs/how-it-works.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Testing](docs/testing.md)
@@ -349,8 +306,7 @@ rm -rf ~/.config/wayland-scroll-factor
 
 ## Project Status
 
-WSF is a small open-source tool built around practical desktop behavior. The
-GNOME backend is the oldest and most proven path. Hyprland support works today,
-including Lua scroll application and optional pinch gesture tuning, but it is
-still a newer backend and may need compositor-specific fixes as Hyprland
-evolves.
+WSF is a small open-source tool built around practical desktop behavior. As of
+1.0.0 it is a stable, GNOME-focused product: the preload backend has been in
+daily use for months and the GUI follows current GNOME HIG. Hyprland support
+survives as an unsupported opt-in build module.

@@ -164,6 +164,8 @@ systemctl --user daemon-reexec
 
 ## Hyprland Runtime Checks
 
+> Opt-in module: everything below requires a `-Dhyprland=enabled` build; default builds do not include it (see [hyprland.md](hyprland.md)).
+
 Hyprland scroll should apply live:
 
 ```bash

@@ -13,8 +13,8 @@ WSF is split into small pieces:
 - `libwsf_preload.so`: optional preload library used by the GNOME backend and
   Hyprland pinch gesture backend.
 - `wsf-gui`: optional GTK/libadwaita controller that calls the `wsf` command.
-- `wsf-hyprland`, `wsf-session-wrapper`, `wsf-start-hyprland`: optional
-  Hyprland launch helpers.
+- `wsf-hyprland`, `wsf-session-wrapper`, `wsf-start-hyprland`: Hyprland launch
+  helpers, only built and installed with `-Dhyprland=enabled` (opt-in module).
 
 The core CLI and preload library are built in C and depend only on the system C
 library and dynamic loader APIs. WSF does not link against libinput at build
@@ -46,7 +46,7 @@ The GUI is optional. If you only use the CLI, these are not needed.
 | Dependency | Required? | Why WSF needs it | Upstream |
 | --- | --- | --- | --- |
 | GNOME Shell | GNOME backend only | The preload backend targets `gnome-shell` on Wayland | <https://gitlab.gnome.org/GNOME/gnome-shell> |
-| Hyprland | Hyprland backend only | Native scroll backend and optional gesture preload launcher | <https://hypr.land/> |
+| Hyprland | Opt-in module only (`-Dhyprland=enabled`) | Native scroll backend and gesture preload launcher | <https://hypr.land/> |
 | libinput | Normally already part of the desktop stack | WSF wraps selected libinput functions at runtime inside the compositor | <https://wayland.freedesktop.org/libinput/doc/latest/> |
 | `libinput` CLI tool | Optional | `wsf doctor` uses it to print the libinput version when available | <https://wayland.freedesktop.org/libinput/doc/latest/tools.html> |
 | systemd user manager | GNOME backend | `wsf enable`, `wsf disable`, and `wsf repair` use per-user `environment.d` | <https://www.freedesktop.org/software/systemd/man/latest/environment.d.html> |

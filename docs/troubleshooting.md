@@ -78,6 +78,8 @@ mean the difference is client-side interpretation, out of WSF's reach.
 
 ## Hyprland
 
+> Opt-in module: everything below requires a `-Dhyprland=enabled` build; default builds do not include it (see [hyprland.md](hyprland.md)).
+
 - Run `wsf status` and confirm it reports `hyprland: running`.
 - Run `hyprctl getoption input:touchpad:scroll_factor` to inspect the live compositor value.
 - Run `wsf set 0.35` or `wsf apply`; both should update the live Hyprland scroll factor without logout.

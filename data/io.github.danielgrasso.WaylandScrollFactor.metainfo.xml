@@ -17,6 +17,16 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="1.0.0" date="2026-07-31">
+      <description>
+        <p>First stable release.</p>
+        <ul>
+          <li>GUI rebuilt on current GNOME HIG: boxed-list layout, aligned symbolic icons, equal-length sliders, contextual reset</li>
+          <li>Diagnostics moved to About - Troubleshooting</li>
+          <li>Hyprland demoted to an unsupported opt-in build module, disabled by default</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.3" date="2026-06-11">
       <description>
         <p>Packaging and publication release.</p>

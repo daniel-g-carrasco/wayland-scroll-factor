@@ -101,6 +101,8 @@ hot-patch a running GNOME Shell process; logout/login is still required if
 
 ## Hyprland Scroll Flow
 
+> Opt-in module: everything below requires a `-Dhyprland=enabled` build; default builds do not include it (see [hyprland.md](hyprland.md)).
+
 Hyprland exposes a native touchpad scroll setting:
 
 ```bash
@@ -150,6 +152,8 @@ The helper calls `wsf apply` when loaded and after `hyprland.start` /
 without requiring distro-specific code.
 
 ## Hyprland Pinch Zoom/Rotate Flow
+
+> Opt-in module: everything below requires a `-Dhyprland=enabled` build; default builds do not include it (see [hyprland.md](hyprland.md)).
 
 Hyprland does not currently expose native general-purpose client settings for
 pinch zoom or pinch rotate sensitivity. For those gestures, WSF can use a
