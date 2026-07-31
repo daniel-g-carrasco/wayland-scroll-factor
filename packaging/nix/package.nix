@@ -47,6 +47,12 @@ stdenv.mkDerivation {
     glib
   ];
 
+  # Hyprland support is an opt-in meson feature; the default build carries
+  # no Hyprland files.
+  mesonFlags = [
+    (lib.mesonEnable "hyprland" withHyprland)
+  ];
+
   # wrapGAppsHook4 already wraps everything in $out/bin during fixup, so
   # extra runtime PATH entries go through gappsWrapperArgs instead of a
   # second wrapProgram layer. Hyprland is opt-in: on a GNOME system it would

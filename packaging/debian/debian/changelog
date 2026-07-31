@@ -1,3 +1,10 @@
+wayland-scroll-factor (1.0.0-1) unstable; urgency=medium
+
+  * Hyprland support is now an opt-in meson feature (-Dhyprland=enabled),
+    disabled and unpackaged by default.
+
+ -- Daniel Grasso <daniel@the-empty.place>  Fri, 31 Jul 2026 14:25:00 +0200
+
 wayland-scroll-factor (0.3.5-1) unstable; urgency=medium
 
   * Show the version everywhere: wsf version / wsf --version, a

@@ -26,10 +26,7 @@ Depends:
  gir1.2-adw-1
 Recommends:
  libinput-tools
-Suggests:
- hyprland
 Description: touchpad scroll and gesture tuning for Wayland
  Wayland Scroll Factor provides touchpad scroll and gesture tuning for Wayland
- desktops. It supports GNOME Wayland through a guarded per-user preload backend
- and Hyprland through native runtime scroll settings plus an optional gesture
- launcher.
+ desktops. It supports GNOME Wayland through a guarded per-user preload
+ backend.

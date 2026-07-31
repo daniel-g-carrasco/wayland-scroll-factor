@@ -16,7 +16,7 @@ Runs a distro smoke test in Podman:
   - checks Python GUI syntax
   - validates installed desktop/metainfo files when validators are available
 
-These tests do not validate real compositor input behavior. GNOME/Hyprland
+These tests do not validate real compositor input behavior. GNOME
 gesture behavior must still be tested in a real graphical Wayland session.
 EOF
 }
@@ -80,8 +80,13 @@ run_case() {
       if command -v desktop-file-validate >/dev/null 2>&1; then
         desktop-file-validate /usr/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
       fi
-      grep '^Exec=' /usr/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
-      grep '^DesktopNames=Hyprland' /usr/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
+      # Hyprland is an opt-in meson feature: the default build must not
+      # install any Hyprland artifacts.
+      test ! -e /usr/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
+      test ! -e /usr/bin/wsf-hyprland
+      test ! -e /usr/bin/wsf-start-hyprland
+      test ! -e /usr/bin/wsf-session-wrapper
+      test ! -e /usr/share/wayland-scroll-factor/hyprland/wsf.lua
       if command -v appstreamcli >/dev/null 2>&1; then
         appstreamcli validate --no-net /usr/share/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
       fi

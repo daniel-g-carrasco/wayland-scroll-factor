@@ -1,5 +1,5 @@
 Name:           wayland-scroll-factor
-Version:        0.3.5
+Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Touchpad scroll and gesture tuning for Wayland
 
@@ -20,13 +20,10 @@ Requires:       gtk4
 Requires:       libadwaita
 
 Recommends:     libinput-utils
-Suggests:       hyprland
 
 %description
 Wayland Scroll Factor provides touchpad scroll and gesture tuning for Wayland
-desktops. It supports GNOME Wayland through a guarded per-user preload backend
-and Hyprland through native runtime scroll settings plus an optional gesture
-launcher.
+desktops. It supports GNOME Wayland through a guarded per-user preload backend.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -50,19 +47,18 @@ appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.m
 %doc README.md CHANGELOG.md docs
 %{_bindir}/wsf
 %{_bindir}/wsf-gui
-%{_bindir}/wsf-hyprland
-%{_bindir}/wsf-session-wrapper
-%{_bindir}/wsf-start-hyprland
 %{_libdir}/wayland-scroll-factor/
 %{_datadir}/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
 %{_datadir}/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
 %{_datadir}/icons/hicolor/128x128/apps/io.github.danielgrasso.WaylandScrollFactor.png
 %{_datadir}/icons/hicolor/256x256/apps/io.github.danielgrasso.WaylandScrollFactor.png
 %{_datadir}/icons/hicolor/512x512/apps/io.github.danielgrasso.WaylandScrollFactor.png
-%{_datadir}/wayland-sessions/wayland-scroll-factor-hyprland.desktop
-%{_datadir}/wayland-scroll-factor/hyprland/wsf.lua
 
 %changelog
+* Fri Jul 31 2026 Daniel Grasso <daniel@the-empty.place> - 1.0.0-1
+- Hyprland support is now an opt-in meson feature (-Dhyprland=enabled),
+  disabled and unpackaged by default.
+
 * Sat Jun 13 2026 Daniel Grasso <daniel@the-empty.place> - 0.3.5-1
 - Show the version everywhere: `wsf version` / `wsf --version`, a
   `wsf_version`/`wsf-version` field in `status` and `doctor` (text and
