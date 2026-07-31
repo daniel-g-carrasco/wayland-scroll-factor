@@ -10,7 +10,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 APP_ID = "io.github.danielgrasso.WaylandScrollFactor"
 FACTOR_MIN = 0.05
@@ -27,20 +27,28 @@ CLI_MAP = {
     "pinch_rotate": "--pinch-rotate",
 }
 
+# Stock symbolic icons only (shipped by adwaita-icon-theme): consistent
+# stroke weight, and Adw.ActionRow prefixes align them on one axis for
+# free — no hand-tuned label widths.
+ROWS = (
+    ("scroll_vertical", "Vertical scroll", "object-flip-vertical-symbolic"),
+    ("scroll_horizontal", "Horizontal scroll", "object-flip-horizontal-symbolic"),
+    ("pinch_zoom", "Pinch zoom", "zoom-in-symbolic"),
+    ("pinch_rotate", "Pinch rotate", "object-rotate-right-symbolic"),
+)
+
 
 class WsfWindow(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app)
         self.set_title("Wayland Scroll Factor")
-        self.set_default_size(560, 640)
+        self.set_default_size(520, 480)
+        self.set_size_request(360, -1)
 
         self._cli_path = self._find_wsf()
         self._version = self._get_version()
         self._debounce_ids = {}
         self._loading = True
-        self._last_doctor_output = ""
-        self._hyprland_running = False
-        self._hyprland_gesture_preload = False
         self._gnome_preload_active = False
 
         self._toast_overlay = Adw.ToastOverlay()
@@ -52,19 +60,18 @@ class WsfWindow(Adw.ApplicationWindow):
         self._toast_overlay.set_child(toolbar_view)
 
         header = Adw.HeaderBar()
-        header.set_show_end_title_buttons(True)
         window_title = Adw.WindowTitle(title="Wayland Scroll Factor")
         if self._version:
             window_title.set_subtitle(f"v{self._version}")
         header.set_title_widget(window_title)
 
-        # Primary menu with an About entry (version lives there too).
         menu = Gio.Menu()
         menu.append("About Wayland Scroll Factor", "win.about")
         menu_button = Gtk.MenuButton()
         menu_button.set_icon_name("open-menu-symbolic")
         menu_button.set_menu_model(menu)
         menu_button.set_tooltip_text("Main menu")
+        menu_button.set_primary(True)
         header.pack_end(menu_button)
 
         about_action = Gio.SimpleAction.new("about", None)
@@ -75,7 +82,8 @@ class WsfWindow(Adw.ApplicationWindow):
 
         if not self._cli_path:
             status = Adw.StatusPage()
-            status.set_title("wsf not found")
+            status.set_icon_name("dialog-warning-symbolic")
+            status.set_title("wsf Not Found")
             status.set_description(
                 "Install the CLI and ensure it is in PATH (e.g. ~/.local/bin)."
             )
@@ -83,210 +91,127 @@ class WsfWindow(Adw.ApplicationWindow):
             self._loading = False
             return
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content.set_margin_top(24)
-        content.set_margin_bottom(24)
-        content.set_margin_start(24)
-        content.set_margin_end(24)
-        content.set_hexpand(True)
-        content.set_halign(Gtk.Align.FILL)
-        toolbar_view.set_content(content)
-        self.set_size_request(360, -1)
-
-        self._scroll_group = Adw.PreferencesGroup(title="Scroll sensitivity")
-        content.append(self._scroll_group)
+        # Adw.PreferencesPage gives the HIG layout for free: boxed-list
+        # groups, content clamp, scrolling.
+        page = Adw.PreferencesPage()
+        toolbar_view.set_content(page)
 
         self._sliders = {}
-        self._label_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
-        self._hint_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
-        self._add_slider_row(
-            self._scroll_group,
-            "Vertical scroll",
-            "scroll_vertical",
-            "↕",
+        scroll_group = Adw.PreferencesGroup(title="Scroll Sensitivity")
+        scroll_group.set_description("1.00 is the system default speed")
+        page.add(scroll_group)
+        for key, title, icon_name in ROWS:
+            scroll_group.add(self._build_factor_row(key, title, icon_name))
+
+        system_group = Adw.PreferencesGroup(title="System Integration")
+        page.add(system_group)
+        self._enabled_row = self._build_switch_row(
+            "GNOME Preload", "Enable or disable requires logging out and back in"
         )
-        self._add_slider_row(
-            self._scroll_group,
-            "Horizontal scroll",
-            "scroll_horizontal",
-            "↔",
-        )
-        self._add_slider_row(
-            self._scroll_group,
-            "Pinch zoom",
-            "pinch_zoom",
-            "⤢",
-        )
-        self._add_slider_row(
-            self._scroll_group,
-            "Pinch rotate",
-            "pinch_rotate",
-            "↻",
-        )
-
-        self._system_group = Adw.PreferencesGroup(title="System integration")
-        content.append(self._system_group)
-
-        enabled_row = Adw.ActionRow(title="GNOME preload")
-        enabled_row.set_subtitle("Enable/disable requires logout/login")
-        self._enabled_row = enabled_row
-        self._enable_switch = Gtk.Switch()
-        self._enable_switch.set_valign(Gtk.Align.CENTER)
-        enabled_row.add_suffix(self._enable_switch)
-        enabled_row.set_activatable_widget(self._enable_switch)
-        self._system_group.add(enabled_row)
-        self._enable_switch.connect("notify::active", self._on_enabled_toggled)
-
-        self._diagnostics_group = Adw.PreferencesGroup(title="Diagnostics")
-        content.append(self._diagnostics_group)
-
-        actions_row = Adw.ActionRow()
-        actions_row.set_subtitle("Collect runtime information")
-
-        run_button = Gtk.Button(label="Run doctor")
-        run_button.add_css_class("suggested-action")
-        run_button.connect("clicked", self._on_run_doctor)
-
-        copy_button = Gtk.Button(label="Copy diagnostics")
-        copy_button.add_css_class("flat")
-        copy_button.connect("clicked", self._on_copy_diagnostics)
-
-        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        actions_box.append(run_button)
-        actions_box.append(copy_button)
-        actions_row.add_suffix(actions_box)
-        self._diagnostics_group.add(actions_row)
-
-        self._diagnostics_buffer = Gtk.TextBuffer()
-        diagnostics_view = Gtk.TextView(buffer=self._diagnostics_buffer)
-        diagnostics_view.set_editable(False)
-        diagnostics_view.set_cursor_visible(False)
-        diagnostics_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        diagnostics_view.set_monospace(True)
-
-        diagnostics_scroller = Gtk.ScrolledWindow()
-        diagnostics_scroller.set_min_content_height(160)
-        diagnostics_scroller.set_hexpand(True)
-        diagnostics_scroller.set_child(diagnostics_view)
-        self._diagnostics_group.add(diagnostics_scroller)
+        system_group.add(self._enabled_row)
 
         self._loading = False
         self._refresh_all()
 
-    def _add_slider_row(self, group, title, key, hint=None):
-        row = Adw.PreferencesRow()
+    # ── widgets ──────────────────────────────────────────────────────
 
-        row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        row_box.set_hexpand(True)
-        row_box.set_halign(Gtk.Align.FILL)
-        row_box.set_margin_start(12)
-        row_box.set_margin_end(12)
-        row_box.set_margin_top(6)
-        row_box.set_margin_bottom(6)
-
-        label_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        label_box.set_hexpand(False)
-
-        if hint:
-            hint_label = Gtk.Label(label=hint)
-            hint_label.set_xalign(0)
-            hint_label.set_valign(Gtk.Align.CENTER)
-            hint_label.add_css_class("dim-label")
-            hint_label.set_width_chars(2)
-            hint_label.set_halign(Gtk.Align.START)
-            self._hint_group.add_widget(hint_label)
-            label_box.append(hint_label)
-
-        label = Gtk.Label(label=title)
-        label.set_xalign(0)
-        label.set_valign(Gtk.Align.CENTER)
-        label.add_css_class("title")
-        label_box.append(label)
-        self._label_group.add_widget(label_box)
+    def _build_factor_row(self, key, title, icon_name):
+        row = Adw.ActionRow(title=title)
+        row.add_prefix(Gtk.Image.new_from_icon_name(icon_name))
 
         adjustment = Gtk.Adjustment(
             value=DEFAULT_FACTOR,
             lower=FACTOR_MIN,
             upper=FACTOR_MAX,
-            step_increment=0.01,
-            page_increment=0.1,
+            step_increment=0.05,
+            page_increment=0.25,
             page_size=0.0,
         )
+
         scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=adjustment)
         scale.set_draw_value(False)
         scale.set_hexpand(True)
         scale.set_valign(Gtk.Align.CENTER)
-        scale.set_size_request(220, -1)
+        scale.set_size_request(160, -1)
+        scale.add_mark(DEFAULT_FACTOR, Gtk.PositionType.BOTTOM, None)
         self._set_accessible_name(scale, title)
-        def _mark_label(value):
-            rounded = round(value)
-            if abs(value - rounded) < 1e-6:
-                return str(int(rounded))
-            return f"{value:.2f}"
 
-        scale.add_mark(FACTOR_MIN, Gtk.PositionType.BOTTOM, _mark_label(FACTOR_MIN))
-        scale.add_mark(DEFAULT_FACTOR, Gtk.PositionType.BOTTOM, _mark_label(DEFAULT_FACTOR))
-        scale.add_mark(FACTOR_MAX, Gtk.PositionType.BOTTOM, _mark_label(FACTOR_MAX))
-
-        spin = Gtk.SpinButton(adjustment=adjustment, climb_rate=0.1, digits=2)
+        spin = Gtk.SpinButton(adjustment=adjustment, climb_rate=0.05, digits=2)
         spin.set_numeric(True)
         spin.set_valign(Gtk.Align.CENTER)
         spin.set_width_chars(5)
         self._set_accessible_name(spin, f"{title} value")
 
-        reset_button = Gtk.Button(label="Reset")
-        reset_button.add_css_class("flat")
-        reset_button.set_valign(Gtk.Align.CENTER)
-        self._set_accessible_name(reset_button, f"Reset {title}")
+        undo = Gtk.Button.new_from_icon_name("edit-undo-symbolic")
+        undo.add_css_class("flat")
+        undo.set_valign(Gtk.Align.CENTER)
+        undo.set_tooltip_text(f"Reset to {DEFAULT_FACTOR:.2f}")
+        undo.connect("clicked", self._on_reset_clicked, key)
+        self._set_accessible_name(undo, f"Reset {title}")
 
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        box.set_hexpand(True)
-        box.set_halign(Gtk.Align.FILL)
-        box.set_margin_start(8)
-        box.set_margin_end(0)
-        box.append(scale)
-        box.append(spin)
-        box.append(reset_button)
-
-        row_box.append(label_box)
-        row_box.append(box)
-        row.set_child(row_box)
-        group.add(row)
+        row.add_suffix(scale)
+        row.add_suffix(spin)
+        row.add_suffix(undo)
+        row.set_activatable(False)
 
         adjustment.connect("value-changed", self._on_adjustment_changed, key)
-        reset_button.connect("clicked", self._on_reset_clicked, key)
+        self._sliders[key] = {"adjustment": adjustment, "undo": undo}
+        self._sync_undo_visibility(key)
+        return row
 
-        self._sliders[key] = {
-            "adjustment": adjustment,
-        }
+    def _build_switch_row(self, title, subtitle):
+        if hasattr(Adw, "SwitchRow"):
+            row = Adw.SwitchRow(title=title, subtitle=subtitle)
+            row.connect("notify::active", self._on_enabled_toggled)
+            self._enable_getter = row.get_active
+            self._enable_setter = row.set_active
+            self._enable_sensitive = row.set_sensitive
+            return row
+        # Older libadwaita (< 1.4): plain ActionRow + Switch.
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        switch = Gtk.Switch(valign=Gtk.Align.CENTER)
+        row.add_suffix(switch)
+        row.set_activatable_widget(switch)
+        switch.connect("notify::active", self._on_enabled_toggled)
+        self._enable_getter = switch.get_active
+        self._enable_setter = switch.set_active
+        self._enable_sensitive = switch.set_sensitive
+        return row
 
     def _set_accessible_name(self, widget, name):
-        if hasattr(widget, "set_accessible_name"):
-            widget.set_accessible_name(name)
-            return
         if hasattr(widget, "update_property") and hasattr(Gtk, "AccessibleProperty"):
             try:
                 widget.update_property([Gtk.AccessibleProperty.LABEL], [name])
                 return
             except Exception:
                 pass
-        if hasattr(widget, "set_tooltip_text"):
-            widget.set_tooltip_text(name)
+        widget.set_tooltip_text(name)
+
+    # ── slider plumbing ──────────────────────────────────────────────
 
     def _set_slider_value(self, key, value):
         slider = self._sliders.get(key)
         if not slider:
             return
         slider["adjustment"].set_value(value)
+        self._sync_undo_visibility(key)
+
+    def _sync_undo_visibility(self, key):
+        slider = self._sliders.get(key)
+        if not slider:
+            return
+        at_default = abs(slider["adjustment"].get_value() - DEFAULT_FACTOR) < 1e-6
+        slider["undo"].set_opacity(0.0 if at_default else 1.0)
+        slider["undo"].set_can_target(not at_default)
 
     def _on_reset_clicked(self, _button, key):
         self._set_slider_value(key, DEFAULT_FACTOR)
 
     def _on_adjustment_changed(self, adjustment, key):
+        self._sync_undo_visibility(key)
         if self._loading:
             return
-        value = adjustment.get_value()
-        self._schedule_apply(key, value)
+        self._schedule_apply(key, adjustment.get_value())
 
     def _schedule_apply(self, key, value):
         if key in self._debounce_ids:
@@ -308,69 +233,27 @@ class WsfWindow(Adw.ApplicationWindow):
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            if self._hyprland_running and key in {"scroll_vertical", "scroll_horizontal"}:
-                self._loading = True
-                self._set_slider_value("scroll_vertical", value)
-                self._set_slider_value("scroll_horizontal", value)
-                self._loading = False
-                self._show_apply_toast("Applied live via Hyprland native scroll factor.")
-            elif self._hyprland_running:
-                if self._hyprland_gesture_preload:
-                    self._show_apply_toast("Saved. Hyprland gesture preload should pick it up live.")
-                else:
-                    self._show_apply_toast("Saved. Restart Hyprland with WSF gesture preload to apply pinch controls.")
-            elif self._gnome_preload_active:
-                self._show_apply_toast("Saved. GNOME preload will reread it on the next handled gesture.")
+            if self._gnome_preload_active:
+                self._show_apply_toast("Saved. Applies from the next gesture.")
             else:
-                self._show_apply_toast("Saved. Log out and back in to load GNOME preload.")
+                self._show_apply_toast("Saved. Log out and back in to activate.")
             return
         self._show_toast(result.stderr.strip() or "Failed to apply settings.")
 
-    def _on_enabled_toggled(self, switch, _param):
+    def _on_enabled_toggled(self, *_args):
         if self._loading:
             return
-        if self._hyprland_running:
-            self._show_toast("Not needed on Hyprland; scroll applies live.")
-            return
-        cmd = "enable" if switch.get_active() else "disable"
+        cmd = "enable" if self._enable_getter() else "disable"
         result = self._run_wsf([cmd])
         if not result:
             self._show_toast("wsf not found. Install the CLI first.")
             return
         if result.returncode == 0:
-            self._show_apply_toast("Applied. Log out and back in to change preload activation.")
+            self._show_apply_toast("Applied. Log out and back in for the change to take effect.")
             return
         self._show_toast(result.stderr.strip() or "Failed to change status.")
 
-    def _on_run_doctor(self, _button):
-        result = self._run_wsf(["doctor"])
-        if not result:
-            self._show_toast("wsf not found. Install the CLI first.")
-            return
-        if result.returncode != 0:
-            output = result.stderr.strip() or "wsf doctor failed."
-        else:
-            output = result.stdout
-        self._last_doctor_output = output
-        self._diagnostics_buffer.set_text(output)
-        self._show_toast("Diagnostics updated.")
-
-    def _on_copy_diagnostics(self, _button):
-        if not self._last_doctor_output:
-            self._show_toast("No diagnostics to copy yet.")
-            return
-        display = Gdk.Display.get_default()
-        if not display:
-            self._show_toast("Clipboard unavailable.")
-            return
-        clipboard = display.get_clipboard()
-        try:
-            provider = Gdk.ContentProvider.new_for_value(self._last_doctor_output)
-            clipboard.set_content(provider)
-        except Exception:
-            self._show_toast("Clipboard unavailable.")
-            return
-        self._show_toast("Diagnostics copied to clipboard.")
+    # ── CLI plumbing ─────────────────────────────────────────────────
 
     def _run_wsf(self, args):
         if not self._cli_path:
@@ -413,9 +296,18 @@ class WsfWindow(Adw.ApplicationWindow):
         # to Adw.AboutWindow on older runtimes (Debian stable, etc.).
         if hasattr(Adw, "AboutDialog"):
             about = Adw.AboutDialog(**kwargs)
-            about.present(self)
         else:
             about = Adw.AboutWindow(transient_for=self, **kwargs)
+        # The old in-window "doctor" panel now lives where GNOME puts
+        # diagnostics: About → Troubleshooting → Debugging Information,
+        # with copy/save built in. Same `wsf doctor` output.
+        doctor = self._run_wsf(["doctor"])
+        if doctor and (doctor.stdout or doctor.stderr):
+            about.set_debug_info(doctor.stdout or doctor.stderr)
+            about.set_debug_info_filename("wsf-diagnostics.txt")
+        if hasattr(Adw, "AboutDialog") and isinstance(about, Adw.AboutDialog):
+            about.present(self)
+        else:
             about.present()
 
     def _find_wsf(self):
@@ -428,41 +320,9 @@ class WsfWindow(Adw.ApplicationWindow):
             return fallback
         return None
 
+    # ── status refresh ───────────────────────────────────────────────
+
     def _refresh_all(self):
-        self._refresh_factors()
-        self._refresh_status()
-
-    def _refresh_factors(self):
-        result = self._run_wsf(["status", "--json"])
-        if not result or result.returncode != 0:
-            return
-        try:
-            data = json.loads(result.stdout)
-        except json.JSONDecodeError:
-            return
-
-        factors = data.get("factors", data)
-        hyprland = data.get("hyprland", {})
-        hyprland_preload = data.get("hyprland_preload", {})
-        hyprland_scroll = hyprland.get("touchpad_scroll_factor")
-        self._hyprland_running = bool(hyprland.get("running", False))
-        self._hyprland_gesture_preload = bool(hyprland_preload.get("library_mapped", False))
-        self._gnome_preload_active = bool(data.get("gnome_shell_library_mapped", False))
-        if self._hyprland_running and hyprland_scroll is not None:
-            scroll_vertical = hyprland_scroll
-            scroll_horizontal = hyprland_scroll
-        else:
-            scroll_vertical = factors.get("scroll_vertical_factor", DEFAULT_FACTOR)
-            scroll_horizontal = factors.get("scroll_horizontal_factor", DEFAULT_FACTOR)
-
-        self._loading = True
-        self._set_slider_value("scroll_vertical", scroll_vertical)
-        self._set_slider_value("scroll_horizontal", scroll_horizontal)
-        self._set_slider_value("pinch_zoom", factors.get("pinch_zoom_factor", DEFAULT_FACTOR))
-        self._set_slider_value("pinch_rotate", factors.get("pinch_rotate_factor", DEFAULT_FACTOR))
-        self._loading = False
-
-    def _refresh_status(self):
         result = self._run_wsf(["status", "--json"])
         if not result or result.returncode != 0:
             self._show_status_error_toast("Unable to read status from wsf.")
@@ -472,26 +332,33 @@ class WsfWindow(Adw.ApplicationWindow):
         except json.JSONDecodeError:
             self._show_status_error_toast("Invalid status response from wsf.")
             return
-        hyprland = data.get("hyprland", {})
-        hyprland_preload = data.get("hyprland_preload", {})
-        self._hyprland_running = bool(hyprland.get("running", False))
-        self._hyprland_gesture_preload = bool(hyprland_preload.get("library_mapped", False))
+
+        factors = data.get("factors", data)
         self._gnome_preload_active = bool(data.get("gnome_shell_library_mapped", False))
+
         self._loading = True
-        self._enable_switch.set_active(bool(data.get("enabled", False)))
-        if self._hyprland_running:
-            self._enable_switch.set_sensitive(False)
-            if self._hyprland_gesture_preload:
-                self._enabled_row.set_subtitle("Hyprland scroll applies live; gesture preload is active")
-            else:
-                self._enabled_row.set_subtitle("Hyprland scroll applies live; pinch needs compositor restart")
+        self._set_slider_value(
+            "scroll_vertical", factors.get("scroll_vertical_factor", DEFAULT_FACTOR)
+        )
+        self._set_slider_value(
+            "scroll_horizontal", factors.get("scroll_horizontal_factor", DEFAULT_FACTOR)
+        )
+        self._set_slider_value(
+            "pinch_zoom", factors.get("pinch_zoom_factor", DEFAULT_FACTOR)
+        )
+        self._set_slider_value(
+            "pinch_rotate", factors.get("pinch_rotate_factor", DEFAULT_FACTOR)
+        )
+        self._enable_setter(bool(data.get("enabled", False)))
+        if self._gnome_preload_active:
+            self._enabled_row.set_subtitle("Preload is active in this session")
         else:
-            self._enable_switch.set_sensitive(True)
-            if self._gnome_preload_active:
-                self._enabled_row.set_subtitle("GNOME preload is active; enable/disable still requires logout/login")
-            else:
-                self._enabled_row.set_subtitle("Enable/disable requires logout/login")
+            self._enabled_row.set_subtitle(
+                "Enable or disable requires logging out and back in"
+            )
         self._loading = False
+
+    # ── toasts ───────────────────────────────────────────────────────
 
     def _show_apply_toast(self, message):
         now_ms = GLib.get_monotonic_time() // 1000
