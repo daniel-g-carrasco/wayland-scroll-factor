@@ -86,7 +86,8 @@ copr_url = https://copr.fedorainfracloud.org
 
 ## Publish From GitHub Actions
 
-Use the manual workflow:
+Publication is automatic on every `v*` release tag. For a manual run
+(re-publish, different project) use the workflow dispatch:
 
 ```text
 Actions -> Publish COPR -> Run workflow
