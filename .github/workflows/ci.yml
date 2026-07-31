@@ -67,9 +67,18 @@ jobs:
         run: |
           python3 -m py_compile gui/wsf_gui.py
           desktop-file-validate build/data/io.github.danielgrasso.WaylandScrollFactor.desktop
-          grep '^Exec=' build/data/wayland-scroll-factor-hyprland.desktop
-          grep '^DesktopNames=Hyprland' build/data/wayland-scroll-factor-hyprland.desktop
+          # Default builds must ship NO Hyprland artifacts (opt-in module).
+          test ! -e build/data/wayland-scroll-factor-hyprland.desktop
           appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+
+      - name: Build + validate the Hyprland opt-in module
+        # The module is unsupported but must keep compiling; its session
+        # desktop is only generated in a -Dhyprland=enabled build.
+        run: |
+          meson setup build-hypr --prefix=/usr --buildtype=release --werror -Dhyprland=enabled
+          meson compile -C build-hypr
+          grep '^Exec=' build-hypr/data/wayland-scroll-factor-hyprland.desktop
+          grep '^DesktopNames=Hyprland' build-hypr/data/wayland-scroll-factor-hyprland.desktop
 
       - name: Exercise CLI config I/O
         run: |
