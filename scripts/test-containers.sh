@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/test-containers.sh [fedora|ubuntu|debian|arch|opensuse|all]
+  scripts/test-containers.sh [fedora|rawhide|ubuntu|debian|arch|opensuse|all]
 
 Runs a distro smoke test in Podman:
   - installs build/runtime validation dependencies inside the container
@@ -15,6 +15,11 @@ Runs a distro smoke test in Podman:
   - checks CLI JSON output
   - checks Python GUI syntax
   - validates installed desktop/metainfo files when validators are available
+
+The `rawhide` case is the early-warning lane: Fedora Rawhide carries the
+next GNOME before it reaches anyone's laptop, so it answers "will WSF
+still build, and does the libinput it ships still export the symbols we
+interpose" months ahead of the release. See docs/compatibility.md.
 
 These tests do not validate real compositor input behavior. GNOME
 gesture behavior must still be tested in a real graphical Wayland session.
@@ -46,7 +51,7 @@ case "$target" in
     usage
     exit 0
     ;;
-  fedora|ubuntu|debian|arch|opensuse|all)
+  fedora|rawhide|ubuntu|debian|arch|opensuse|all)
     ;;
   *)
     usage >&2
@@ -100,6 +105,22 @@ run_fedora() {
     "dnf -y --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita desktop-file-utils appstream grep"
 }
 
+# Fedora Rawhide: the next GNOME, ahead of release. Adds the libinput ABI
+# check on top of the normal smoke test, because the thing most likely to
+# break WSF is not our code but a symbol disappearing underneath it.
+#
+# fedora-cisco-openh264 is disabled: during a Rawhide release rollover its
+# packages are signed with a key the running release does not carry yet
+# ("Import of the key didn't help, wrong key?"), which aborts the whole
+# transaction. WSF needs no codecs; the repo is pulled in only as a
+# dependency of the GTK stack we install for the GUI syntax check.
+run_rawhide() {
+  run_case \
+    "rawhide (next GNOME)" \
+    "registry.fedoraproject.org/fedora:rawhide" \
+    "dnf -y --disablerepo=fedora-cisco-openh264 --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita desktop-file-utils appstream grep libinput binutils && dnf -q --disablerepo=fedora-cisco-openh264 info gnome-shell mutter | grep -E '^(Name|Version)' | paste - - && bash scripts/check-libinput-abi.sh"
+}
+
 run_ubuntu() {
   run_case \
     "ubuntu" \
@@ -130,12 +151,14 @@ run_opensuse() {
 
 case "$target" in
   fedora) run_fedora ;;
+  rawhide) run_rawhide ;;
   ubuntu) run_ubuntu ;;
   debian) run_debian ;;
   arch) run_arch ;;
   opensuse) run_opensuse ;;
   all)
     run_fedora
+    run_rawhide
     run_ubuntu
     run_debian
     run_arch

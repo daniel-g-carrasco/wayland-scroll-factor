@@ -31,11 +31,18 @@ Use Podman from the repository root:
 
 ```bash
 scripts/test-containers.sh fedora
+scripts/test-containers.sh rawhide
 scripts/test-containers.sh ubuntu
 scripts/test-containers.sh debian
 scripts/test-containers.sh arch
 scripts/test-containers.sh opensuse
 ```
+
+`rawhide` is the odd one out: Fedora Rawhide carries the next GNOME long
+before anyone runs it, so that lane doubles as the compatibility check.
+It prints the GNOME version it is testing against and verifies that the
+libinput it ships still exports every symbol WSF interposes. See
+[compatibility.md](compatibility.md).
 
 Run the whole matrix:
 
