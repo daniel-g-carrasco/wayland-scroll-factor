@@ -50,26 +50,39 @@ issue.
 
 ### Chromium apps scroll faster at the same factor (known, not a WSF bug)
 
-Chromium and Electron apps (Chrome, Brave, VS Code, ...) feel much faster than
-GTK apps at the same factor, so users end up wanting a far lower value for
-them (issue #29). The cause is inside Chromium, not in WSF: its Wayland
-backend converts every `wl_pointer.axis` value with
+Chromium and Electron apps (Chrome, Edge, Brave, VS Code, ...) feel faster
+than GTK apps at the same factor, so users end up wanting a lower value for
+them (issues #29 and #36). The cause is inside the toolkits, not in WSF:
+each one turns the scroll values it receives from the compositor into a
+different number of pixels. Per 10 wire units (one wheel detent, or the
+equivalent finger movement):
 
-```c
-delta = value / kAxisValueScale * kWheelDelta   // value / 10 * 53 px
-```
+| Toolkit | Pixels per 10 units | Where |
+| --- | --- | --- |
+| GTK 4 | 25 | `MAGIC_SCROLL_FACTOR 2.5` in `gtk/gtkscrolledwindow.c` |
+| Firefox (GTK 3) | 40 | GTK 3 hands the value divided by 10 (`gdk/wayland/gdkdevice-wayland.c`), Firefox multiplies by `apz.gtk.pangesture.pixel_delta_mode_multiplier` = 40 (`widget/gtk/nsWindow.cpp`) |
+| Chromium, Electron | 53 | `value / kAxisValueScale * kWheelDelta`, that is `value / 10 * 53` (`ui/ozone/platform/wayland/host/wayland_pointer.cc`) |
 
-(`ui/ozone/platform/wayland/host/wayland_pointer.cc`), that is a fixed x5.3
-multiplier applied to whatever the compositor sends, touchpad included. GTK
-maps the same wire values with its own, smaller constants.
+So at the same factor Chromium scrolls about 2.1 times as far as GTK 4 and
+1.3 times as far as Firefox, touchpad included. (Earlier versions of this
+page and the first answer in #29 said "about 5x"; that compared Chromium's
+constant with the wire value itself, forgetting that GTK 4 multiplies too.)
 
 WSF scales the values BEFORE they reach any client, and it scales them
 uniformly. Verified on the wire (GNOME 48, factor 0.25): the same swipe
 delivered per-event deltas with identical medians and maxima to a GTK app and
 to Chromium under `WAYLAND_DEBUG=1`. So the REDUCTION RATIO is uniform across
 toolkits; what differs is each toolkit's base speed, exactly as it differs
-without WSF installed. A factor tuned for GTK comfort will always leave
-Chromium ~5x faster, because Chromium is ~5x faster to begin with.
+without WSF installed. A factor tuned for GTK comfort leaves Chromium about
+twice as fast, because Chromium is about twice as fast to begin with.
+
+A per-application factor is out of WSF's reach: the preload sees the libinput
+events before Mutter knows which window will receive them. Compositors with
+per-window scroll factors can compensate it exactly (niri's window rules, for
+example: 0.47 for Chromium windows and 0.625 for Firefox windows put both at
+GTK 4's pace); GNOME has no equivalent today. On GNOME the practical choices
+are a lower factor, or a browser extension that scales the scrolling of web
+content.
 
 To verify on your own system: run the affected app and a GTK app with
 `WAYLAND_DEBUG=1 2>log`, do one identical swipe over each, and compare the
