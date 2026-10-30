@@ -1,5 +1,5 @@
 Name:           wayland-scroll-factor
-Version:        1.0.0
+Version:        1.0.1
 Release:        1%{?dist}
 Summary:        Touchpad scroll and gesture tuning for Wayland
 
@@ -50,6 +50,7 @@ appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.m
 %{_libdir}/wayland-scroll-factor/
 %{_datadir}/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
 %{_datadir}/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/io.github.danielgrasso.WaylandScrollFactor.svg
 %{_datadir}/icons/hicolor/128x128/apps/io.github.danielgrasso.WaylandScrollFactor.png
 %{_datadir}/icons/hicolor/256x256/apps/io.github.danielgrasso.WaylandScrollFactor.png
 %{_datadir}/icons/hicolor/512x512/apps/io.github.danielgrasso.WaylandScrollFactor.png

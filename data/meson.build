@@ -35,6 +35,12 @@ install_data(
   install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'metainfo')
 )
 
+install_data(
+  'icons/hicolor/scalable/apps/io.github.danielgrasso.WaylandScrollFactor.svg',
+  install_dir: join_paths(get_option('prefix'), get_option('datadir'), 'icons', 'hicolor', 'scalable', 'apps')
+)
+
+# The PNG sizes are rendered from the SVG above (inkscape --export-width).
 foreach size : ['128x128', '256x256', '512x512']
   install_data(
     'icons/hicolor/' + size + '/apps/io.github.danielgrasso.WaylandScrollFactor.png',

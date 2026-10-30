@@ -14,6 +14,7 @@ rm -f "$PREFIX/share/applications/io.github.danielgrasso.WaylandScrollFactor.des
 rm -f "$PREFIX/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop"
 rm -rf "$PREFIX/share/wayland-scroll-factor"
 rm -f "$PREFIX/share/metainfo/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml"
+rm -f "$PREFIX/share/icons/hicolor/scalable/apps/io.github.danielgrasso.WaylandScrollFactor.svg"
 rm -f "$PREFIX/share/icons/hicolor/128x128/apps/io.github.danielgrasso.WaylandScrollFactor.png"
 rm -f "$PREFIX/share/icons/hicolor/256x256/apps/io.github.danielgrasso.WaylandScrollFactor.png"
 rm -f "$PREFIX/share/icons/hicolor/512x512/apps/io.github.danielgrasso.WaylandScrollFactor.png"
