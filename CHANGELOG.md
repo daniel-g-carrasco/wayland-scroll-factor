@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [1.0.2] - 2026-10-30
+
+### Fixed
+- Packaging: the Debian packages of 1.0.1 were still versioned 1.0.0,
+  because `debian/changelog` had not been bumped. No code changes.
+
 ## [1.0.1] - 2026-10-30
 
 ### Changed

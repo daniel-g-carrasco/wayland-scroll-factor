@@ -17,6 +17,11 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="1.0.2" date="2026-10-30">
+      <description>
+        <p>Packaging fix: the Debian packages of 1.0.1 were still versioned 1.0.0.</p>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-10-30">
       <description>
         <p>New app icon.</p>
