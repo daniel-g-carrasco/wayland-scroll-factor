@@ -1,3 +1,10 @@
+wayland-scroll-factor (1.0.2-1) unstable; urgency=medium
+
+  * Packaging fix: the Debian packages of 1.0.1 were still versioned
+    1.0.0. No code changes.
+
+ -- Daniel Grasso <daniel@the-empty.place>  Thu, 30 Oct 2026 14:10:00 +0100
+
 wayland-scroll-factor (1.0.1-1) unstable; urgency=medium
 
   * New app icon, drawn as a vector in the GNOME app icon style; the
