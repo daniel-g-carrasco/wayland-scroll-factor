@@ -10,7 +10,7 @@
 <p align="center">
   <b>Tune touchpad scroll and gesture sensitivity on Wayland.</b><br>
   Built for GNOME Wayland.<br>
-  <i>Current release: 1.0.0, the first stable release.</i>
+  <i>Current release: 1.0.1.</i>
 </p>
 
 ---
