@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Wayland Scroll Factor app icon: two fingertips sliding along an arc on a touchpad.
+     GNOME app icon style, 128 px canvas, Adwaita light pad, trails fading from the tail.
+     The PNG sizes are rendered from this file. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<defs>
+<linearGradient id="light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#deddda"/></linearGradient>
+<linearGradient id="grigio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#333333"/><stop offset="1" stop-color="#1a1a1a"/></linearGradient>
+<linearGradient id="scia0" gradientUnits="userSpaceOnUse" x1="32.65" y1="105.54" x2="54" y2="54"><stop offset="0.00" stop-color="#1a1a1a" stop-opacity="0.000"/><stop offset="0.10" stop-color="#1a1a1a" stop-opacity="0.005"/><stop offset="0.20" stop-color="#1a1a1a" stop-opacity="0.018"/><stop offset="0.30" stop-color="#1a1a1a" stop-opacity="0.041"/><stop offset="0.40" stop-color="#1a1a1a" stop-opacity="0.072"/><stop offset="0.50" stop-color="#1a1a1a" stop-opacity="0.113"/><stop offset="0.60" stop-color="#1a1a1a" stop-opacity="0.162"/><stop offset="0.70" stop-color="#1a1a1a" stop-opacity="0.220"/><stop offset="0.80" stop-color="#1a1a1a" stop-opacity="0.288"/><stop offset="0.90" stop-color="#1a1a1a" stop-opacity="0.365"/><stop offset="1.00" stop-color="#1a1a1a" stop-opacity="0.450"/></linearGradient>
+<linearGradient id="scia1" gradientUnits="userSpaceOnUse" x1="62.65" y1="111.54" x2="84" y2="60"><stop offset="0.00" stop-color="#1a1a1a" stop-opacity="0.000"/><stop offset="0.10" stop-color="#1a1a1a" stop-opacity="0.005"/><stop offset="0.20" stop-color="#1a1a1a" stop-opacity="0.018"/><stop offset="0.30" stop-color="#1a1a1a" stop-opacity="0.041"/><stop offset="0.40" stop-color="#1a1a1a" stop-opacity="0.072"/><stop offset="0.50" stop-color="#1a1a1a" stop-opacity="0.113"/><stop offset="0.60" stop-color="#1a1a1a" stop-opacity="0.162"/><stop offset="0.70" stop-color="#1a1a1a" stop-opacity="0.220"/><stop offset="0.80" stop-color="#1a1a1a" stop-opacity="0.288"/><stop offset="0.90" stop-color="#1a1a1a" stop-opacity="0.365"/><stop offset="1.00" stop-color="#1a1a1a" stop-opacity="0.450"/></linearGradient>
+</defs>
+<rect x="12" y="22" width="104" height="92" rx="18" fill="#c0bfbc"/>
+<rect x="12" y="18" width="104" height="92" rx="18" fill="url(#light)"/>
+<path d="M32.65,105.54 A66,66 0 0 1 54,54" stroke="url(#scia0)" stroke-width="13" stroke-linecap="round" fill="none"/>
+<path d="M62.65,111.54 A66,66 0 0 1 84,60" stroke="url(#scia1)" stroke-width="13" stroke-linecap="round" fill="none"/>
+<circle cx="54" cy="54" r="8.5" fill="url(#grigio)"/>
+<circle cx="84" cy="60" r="8.5" fill="url(#grigio)"/>
+</svg>

@@ -17,6 +17,14 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="1.0.1" date="2026-10-30">
+      <description>
+        <p>New app icon.</p>
+        <ul>
+          <li>Vector icon in the GNOME app icon style: two fingertips sliding along an arc on a touchpad, with a scalable SVG installed next to the PNG sizes</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-07-31">
       <description>
         <p>First stable release.</p>

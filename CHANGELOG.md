@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [1.0.1] - 2026-10-30
+
+### Changed
+- New app icon, drawn as a vector in the GNOME app icon style: two
+  fingertips sliding along an arc on a touchpad, no hand, no gauge. The
+  scalable SVG is now installed next to the 128, 256 and 512 PNG sizes,
+  which are rendered from it.
+
 ## [1.0.0] - 2026-07-31
 
 First stable release. The GNOME backend has been in daily use for months and
