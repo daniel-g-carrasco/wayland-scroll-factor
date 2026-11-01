@@ -76,10 +76,16 @@ events. Factor changes should not require another logout, but they are not a
 separate compositor command: test with a new gesture after changing a value.
 Logout is only required to load or unload the preload itself.
 
+Change detection uses a non-blocking inotify watch on the config directory, so
+a new value is applied from the next scroll or pinch event, even in the middle
+of a gesture. Checking the watch costs at most one non-blocking `read()` per
+millisecond of input, with no file I/O on the input path. The config is
+re-read only after a change is reported. A `stat()` of the config at most every 250 ms remains as a fallback
+for cases inotify cannot see, such as edits made from another machine on a
+network home.
+
 The CLI writes the config through a temporary file and atomic rename, so the
-preload never observes a half-written config. The preload also refreshes the
-effective factors periodically while handling gestures instead of relying only
-on file timestamp changes.
+preload never observes a half-written config.
 
 Config values are parsed with the C numeric locale regardless of the process
 locale. This matters because GNOME Shell may run with a locale that uses a
