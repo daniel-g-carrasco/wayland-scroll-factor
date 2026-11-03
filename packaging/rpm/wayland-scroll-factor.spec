@@ -1,5 +1,5 @@
 Name:           wayland-scroll-factor
-Version:        1.0.2
+Version:        1.0.3
 Release:        1%{?dist}
 Summary:        Touchpad scroll and gesture tuning for Wayland
 
@@ -56,6 +56,16 @@ appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.m
 %{_datadir}/icons/hicolor/512x512/apps/io.github.danielgrasso.WaylandScrollFactor.png
 
 %changelog
+* Tue Nov 03 2026 Daniel Grasso <daniel@the-empty.place> - 1.0.3-1
+- `scripts/bump-version.sh` writes a new version into the six files
+  that carry one, with the Debian, rpm and AppStream entries generated
+  from the CHANGELOG; `scripts/check-version.sh` reads them back,
+  in CI on every push and before every publish on a tag.
+- Preload: a factor change is applied from the next scroll or pinch
+  event instead of up to 250 ms later. The config directory is watched
+  with a non-blocking inotify fd; the 250 ms `stat()` stays as the
+  fallback for network homes and for a config directory created after
+  login. (#42, by @ritesh-777)
 * Fri Jul 31 2026 Daniel Grasso <daniel@the-empty.place> - 1.0.0-1
 - Hyprland support is now an opt-in meson feature (-Dhyprland=enabled),
   disabled and unpackaged by default.
