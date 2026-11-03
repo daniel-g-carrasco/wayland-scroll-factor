@@ -1,3 +1,17 @@
+wayland-scroll-factor (1.0.3-1) unstable; urgency=medium
+
+  * `scripts/bump-version.sh` writes a new version into the six files
+    that carry one, with the Debian, rpm and AppStream entries generated
+    from the CHANGELOG; `scripts/check-version.sh` reads them back,
+    in CI on every push and before every publish on a tag.
+  * Preload: a factor change is applied from the next scroll or
+    pinch event instead of up to 250 ms later. The config directory
+    is watched with a non-blocking inotify fd; the 250 ms `stat()`
+    stays as the fallback for network homes and for a config directory
+    created after login. (#42, by @ritesh-777)
+
+ -- Daniel Grasso <daniel@the-empty.place>  Tue, 03 Nov 2026 14:47:29 +0100
+
 wayland-scroll-factor (1.0.2-1) unstable; urgency=medium
 
   * Packaging fix: the Debian packages of 1.0.1 were still versioned

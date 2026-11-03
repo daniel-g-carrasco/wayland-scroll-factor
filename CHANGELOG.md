@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
-## [Unreleased]
+## [1.0.3] - 2026-11-03
 
 ### Added
 - `scripts/bump-version.sh` writes a new version into the six files that
