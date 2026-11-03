@@ -37,6 +37,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: The tag and the version files agree
+        # The SRPM takes its version from the spec, not from the tag. On a
+        # manual dispatch the ref may be a branch: then only the files are
+        # compared with each other.
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            scripts/check-version.sh "${GITHUB_REF_NAME#v}"
+          else
+            scripts/check-version.sh
+          fi
+
       - name: Build RPM/SRPM artifacts
         run: |
           mkdir -p package-artifacts/rpm

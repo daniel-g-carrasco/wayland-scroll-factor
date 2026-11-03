@@ -6,6 +6,12 @@ The format is inspired by Keep a Changelog and follows Semantic Versioning for t
 
 ## [Unreleased]
 
+### Added
+- `scripts/bump-version.sh` writes a new version into the six files that
+  carry one, with the Debian, rpm and AppStream entries generated from the
+  CHANGELOG; `scripts/check-version.sh` reads them back, in CI on every
+  push and before every publish on a tag.
+
 ### Fixed
 - Preload: a factor change is applied from the next scroll or pinch event
   instead of up to 250 ms later. The config directory is watched with a
