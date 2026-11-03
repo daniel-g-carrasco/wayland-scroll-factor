@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [Unreleased]
+
+### Fixed
+- Preload: a factor change is applied from the next scroll or pinch event
+  instead of up to 250 ms later. The config directory is watched with a
+  non-blocking inotify fd; the 250 ms `stat()` stays as the fallback for
+  network homes and for a config directory created after login.
+  (#42, by @ritesh-777)
+
 ## [1.0.2] - 2026-10-30
 
 ### Fixed

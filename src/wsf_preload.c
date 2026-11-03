@@ -2,6 +2,8 @@
 
 #include <ctype.h>
 #include <dlfcn.h>
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -10,8 +12,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #ifdef __has_include
 #if __has_include(<libinput.h>)
@@ -125,6 +129,11 @@ static bool wsf_config_seen = false;
 static bool wsf_config_present = false;
 static long long wsf_last_config_check_ms = 0;
 static struct timespec wsf_config_mtime = {0};
+/* inotify instance (set once at init) and its watch on the config dir.
+ * The watch descriptor is only touched under the reload guard. */
+static int wsf_config_watch_fd = -1;
+static int wsf_config_watch_wd = -1;
+static long long wsf_last_watch_check_ms = 0;
 static bool wsf_logged_missing_scroll = false;
 static bool wsf_logged_missing_scroll_v120 = false;
 static bool wsf_logged_missing_axis_value = false;
@@ -476,6 +485,117 @@ static bool wsf_config_snapshot(struct timespec *mtime, bool *present) {
 	return true;
 }
 
+/*
+ * Change notification for the config file, so a `wsf set` is picked up on
+ * the next libinput event instead of on the next 250 ms stat tick. The
+ * directory is watched, not the file, because the CLI replaces the config
+ * by atomic rename. Draining the watch is a single non-blocking read() on
+ * the inotify fd: no path lookup and no file I/O, so it cannot stall on a
+ * network home. When the watch is unavailable (no inotify, directory not
+ * created yet, remote change on NFS) the stat tick still catches changes.
+ */
+static void wsf_config_watch_arm(void) {
+	const char *path = NULL;
+	const char *slash = NULL;
+	char dir[PATH_MAX];
+	size_t len = 0;
+
+	if (wsf_config_watch_fd < 0 || wsf_config_watch_wd >= 0) {
+		return;
+	}
+
+	path = wsf_config_path();
+	if (path == NULL || (slash = strrchr(path, '/')) == NULL) {
+		return;
+	}
+
+	len = (size_t) (slash - path);
+	if (len == 0 || len >= sizeof(dir)) {
+		return;
+	}
+	memcpy(dir, path, len);
+	dir[len] = '\0';
+
+	wsf_config_watch_wd = inotify_add_watch(
+		wsf_config_watch_fd,
+		dir,
+		IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_DELETE |
+			IN_MOVE_SELF | IN_ONLYDIR
+	);
+	if (wsf_config_watch_wd >= 0) {
+		wsf_debug_log("watching %s for config changes", dir);
+	}
+}
+
+/* Returns true if the config may have changed since the last drain. */
+static bool wsf_config_watch_drain(void) {
+	char buf[4096]
+		__attribute__((aligned(__alignof__(struct inotify_event))));
+	const char *name = NULL;
+	bool changed = false;
+	int saved_errno = errno;
+
+	if (wsf_config_watch_fd < 0) {
+		return false;
+	}
+
+	for (;;) {
+		ssize_t len = read(wsf_config_watch_fd, buf, sizeof(buf));
+		char *cursor = buf;
+
+		if (len < 0 && errno == EINTR) {
+			continue;
+		}
+		if (len <= 0) {
+			break;
+		}
+
+		while (cursor < buf + len) {
+			const struct inotify_event *event =
+				(const struct inotify_event *) cursor;
+
+			cursor += sizeof(*event) + event->len;
+
+			if (event->mask & IN_Q_OVERFLOW) {
+				changed = true;
+				continue;
+			}
+			if (event->wd != wsf_config_watch_wd) {
+				continue;
+			}
+			if (event->mask & (IN_IGNORED | IN_MOVE_SELF)) {
+				/* Directory removed or renamed: drop the watch and
+				 * let the stat tick re-arm it on the new path. */
+				if (event->mask & IN_MOVE_SELF) {
+					inotify_rm_watch(
+						wsf_config_watch_fd,
+						wsf_config_watch_wd
+					);
+				}
+				wsf_config_watch_wd = -1;
+				changed = true;
+				continue;
+			}
+			if (event->len == 0) {
+				continue;
+			}
+			if (name == NULL) {
+				const char *path = wsf_config_path();
+
+				name = path != NULL ? wsf_basename(path) : "config";
+			}
+			/* Ignore the rest of the directory, including the CLI's
+			 * config.tmp.XXXXXX staging file. */
+			if (strcmp(event->name, name) == 0) {
+				changed = true;
+			}
+		}
+	}
+
+	errno = saved_errno;
+	return changed;
+}
+
 static void wsf_apply_effective_factors(bool log_change) {
 	struct wsf_effective_factors factors;
 
@@ -508,28 +628,51 @@ static void wsf_reload_factors_if_needed(void) {
 	long long now_ms = 0;
 	bool present = false;
 	bool changed = false;
+	bool notified = false;
+	bool throttled = false;
 
 	if (!wsf_active) {
 		return;
 	}
 
 	now_ms = wsf_monotonic_ms();
-	if (wsf_last_config_check_ms != 0 &&
-		now_ms - wsf_last_config_check_ms < 250) {
+	throttled = wsf_last_config_check_ms != 0 &&
+		now_ms - wsf_last_config_check_ms < 250;
+
+	/* Between stat ticks only the watch can report a change. */
+	if (throttled && wsf_config_watch_fd < 0) {
 		return;
 	}
 
 	/*
 	 * Single-writer: if another thread is already inside the reload, skip
 	 * rather than re-enter. The throttle + snapshot below are not worth
-	 * racing two event threads over.
+	 * racing two event threads over. Pending watch events stay queued for
+	 * the next call.
 	 */
 	if (atomic_flag_test_and_set(&reloading)) {
 		return;
 	}
 
+	/* At most one drain per millisecond: mutter queries both axes of a
+	 * scroll event back to back, and one read() covers them both. */
+	if (throttled && now_ms == wsf_last_watch_check_ms) {
+		atomic_flag_clear(&reloading);
+		return;
+	}
+	wsf_last_watch_check_ms = now_ms;
+
+	notified = wsf_config_watch_drain();
+	if (throttled && !notified) {
+		atomic_flag_clear(&reloading);
+		return;
+	}
+
 	wsf_last_config_check_ms = now_ms;
 
+	/* Arm before the snapshot so a write landing in between is either
+	 * reported by the watch or visible in the mtime. */
+	wsf_config_watch_arm();
 	(void) wsf_config_snapshot(&mtime, &present);
 
 	if (!wsf_config_seen) {
@@ -541,7 +684,9 @@ static void wsf_reload_factors_if_needed(void) {
 		return;
 	}
 
-	changed = present != wsf_config_present;
+	/* A watch event forces the reload even if the mtime looks unchanged:
+	 * two writes inside one timestamp tick share an mtime. */
+	changed = notified || present != wsf_config_present;
 	if (!changed && present) {
 		changed = !wsf_timespec_equal(mtime, wsf_config_mtime);
 	}
@@ -550,12 +695,13 @@ static void wsf_reload_factors_if_needed(void) {
 	wsf_config_mtime = mtime;
 
 	/*
-	 * Only re-read + re-parse the config file when its mtime actually
-	 * changed. Previously wsf_apply_effective_factors ran every 250 ms
-	 * during scrolling regardless, doing a synchronous fopen/getline/parse
-	 * (plus newlocale x5) on $HOME from gnome-shell's input path — a stall
-	 * on a network/automounted home would freeze scroll handling. The
-	 * cheap stat above stays as the change detector.
+	 * Only re-read + re-parse the config file when it actually changed
+	 * (watch event or new mtime). Previously wsf_apply_effective_factors
+	 * ran every 250 ms during scrolling regardless, doing a synchronous
+	 * fopen/getline/parse (plus newlocale x5) on $HOME from gnome-shell's
+	 * input path — a stall on a network/automounted home would freeze
+	 * scroll handling. The cheap stat above stays as the fallback change
+	 * detector.
 	 */
 	if (changed) {
 		wsf_apply_effective_factors(true);
@@ -665,6 +811,10 @@ static void wsf_init_internal(void) {
 	if (!wsf_is_launcher) {
 		wsf_prune_ld_preload_env();
 	}
+	if (wsf_active) {
+		wsf_config_watch_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+		wsf_config_watch_arm();
+	}
 	(void) wsf_config_snapshot(&config_mtime, &config_present);
 	wsf_config_seen = true;
 	wsf_config_present = config_present;
@@ -682,8 +832,9 @@ static void wsf_init_internal(void) {
 		wsf_real_scroll_value_v120 ? "yes" : "no"
 	);
 	wsf_debug_log(
-		"init: trace=%s",
-		wsf_trace ? "yes" : "no"
+		"init: trace=%s config_watch=%s",
+		wsf_trace ? "yes" : "no",
+		wsf_config_watch_wd >= 0 ? "yes" : "no"
 	);
 	wsf_debug_log(
 		"init: scroll_vertical=%.4f scroll_horizontal=%.4f",
