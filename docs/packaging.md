@@ -96,10 +96,13 @@ them through its own process.
 
 ## Release Checklist For Packagers
 
-- Tag a release in Git.
-- Update `CHANGELOG.md`.
-- Update AppStream release metadata.
-- Update AUR stable `pkgver`, checksum, and `.SRCINFO`.
+- Write the release notes under `## [Unreleased]` in `CHANGELOG.md`, then run
+  `scripts/bump-version.sh X.Y.Z`: it moves them into the versioned section
+  and writes the version into `meson.build`, the rpm spec, the Debian
+  changelog, the AppStream release metadata and the README
+  (`docs/release-checklist.md`, "Cutting a Release").
+- Tag the release in Git only after CI is green on that commit; the AUR stable
+  `pkgver`, checksum and `.SRCINFO` are updated by the AUR workflow on the tag.
 - Run `scripts/test-containers.sh all`.
 - Run `scripts/test-packages.sh all`.
 - Push the `v*` tag and verify the `GitHub Release` workflow uploaded package

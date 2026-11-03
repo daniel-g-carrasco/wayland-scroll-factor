@@ -34,6 +34,12 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
+      - name: The tag and the version files agree
+        # Every package below takes its version from a file, not from the
+        # tag (v1.0.1 shipped .deb files called 1.0.0). Nothing is published
+        # from a tag that disagrees with its tree.
+        run: scripts/check-version.sh "${RELEASE_TAG#v}"
+
       - name: Build RPM and Debian packages
         run: |
           mkdir -p package-artifacts

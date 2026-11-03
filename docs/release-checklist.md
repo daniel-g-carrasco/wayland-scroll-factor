@@ -3,6 +3,31 @@
 WSF is still in testing. Before tagging a public release, run a short validation
 pass on each supported backend.
 
+## Cutting a Release
+
+The version lives in six files, and every package takes it from a file, not
+from the tag: `meson.build`, `packaging/rpm/wayland-scroll-factor.spec`,
+`packaging/debian/debian/changelog` (dpkg names the `.deb` after its first
+entry), the `<releases>` list in the metainfo, `CHANGELOG.md` and the
+"Current release" line in `README.md`. One script writes all of them, from the
+notes under `## [Unreleased]` in `CHANGELOG.md`:
+
+```bash
+scripts/bump-version.sh 1.2.3        # --date YYYY-MM-DD to backdate
+git diff                             # read the generated entries
+git commit -am 'release: v1.2.3'
+git push                             # wait for CI
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+`scripts/check-version.sh` reads the six files back. CI runs it on every push
+(the files must agree with each other), and the release, COPR and AUR
+workflows run it with the tag (the files must say what the tag says, and the
+CHANGELOG must hold no unreleased entries), so a tag that would publish a
+mismatched package stops there. The script exists because v1.0.1 (2026-10-30)
+went out with `.deb` files called 1.0.0: the Debian changelog had been
+forgotten, and the fix needed a new tag.
+
 ## Build
 
 ```bash

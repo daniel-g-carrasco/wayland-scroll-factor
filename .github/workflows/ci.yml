@@ -43,6 +43,32 @@ jobs:
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
+      - name: Version files agree
+        # meson.build, the rpm spec, the Debian changelog, the metainfo, the
+        # CHANGELOG and the README carry the version by hand; v1.0.1 shipped
+        # .deb files called 1.0.0 because one of them was forgotten.
+        run: scripts/check-version.sh
+
+      - name: The bump script still writes all six
+        # On a copy of the tree, with a stand-in Unreleased entry when the
+        # CHANGELOG has none (right after a release): the six files must
+        # agree afterwards and dpkg must read the new Debian version.
+        run: |
+          set -euo pipefail
+          cp -a . "$RUNNER_TEMP/bump" && cd "$RUNNER_TEMP/bump"
+          if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
+            awk '/^## \[/ && !done { print "## [Unreleased]\n\n### Fixed\n- Stand-in entry for the CI self-test.\n"; done = 1 } { print }' \
+              CHANGELOG.md > CHANGELOG.new && mv CHANGELOG.new CHANGELOG.md
+          fi
+          scripts/bump-version.sh 99.0.0 --date 2030-01-01
+          dpkg-parsechangelog -l packaging/debian/debian/changelog -S Version | grep -qx '99.0.0-1'
+          grep -q '^\* Tue Jan 01 2030 .* - 99.0.0-1$' packaging/rpm/wayland-scroll-factor.spec
+          grep -q '<release version="99.0.0" date="2030-01-01">' data/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+          appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+          ! scripts/bump-version.sh 99.0.0 --date 2030-01-01 2>/dev/null
+          sed -i 's/Current release: 99.0.0\./Current release: 98.0.0./' README.md
+          ! scripts/check-version.sh 99.0.0 >/dev/null 2>&1
+
       - name: Static analysis (cppcheck)
         run: |
           # -DWSF_LIBDIR / -DWSF_VERSION mirror meson's compile-time

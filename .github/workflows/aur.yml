@@ -65,6 +65,15 @@ jobs:
         if: steps.tag.outputs.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: The tag and the version files agree
+        # Only on a tag push, where the checkout above is the tag itself: a
+        # manual dispatch checks out the default branch, whose files may
+        # already be past the tag being republished.
+        if: steps.tag.outputs.skip != 'true' && github.event_name == 'push'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: scripts/check-version.sh "${TAG#v}"
+
       - name: Publish (stable + -git) to the AUR
         if: steps.tag.outputs.skip != 'true'
         env:
