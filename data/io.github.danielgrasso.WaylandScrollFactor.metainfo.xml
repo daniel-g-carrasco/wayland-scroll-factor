@@ -17,6 +17,13 @@
   <launchable type="desktop-id">io.github.danielgrasso.WaylandScrollFactor.desktop</launchable>
   <url type="homepage">https://github.com/daniel-g-carrasco/wayland-scroll-factor</url>
   <releases>
+    <release version="1.0.4" date="2026-11-07">
+      <description>
+        <p>Icon: the SVG app icon opened with a comment before the &lt;svg&gt; tag, and gdk-pixbuf did not recognise it as an image, so GNOME menus showed a blank icon (Ubuntu 26.04, Yaru). The comment now sits inside the &lt;svg&gt; element; the artwork is unchanged. (#45, reported by @dradoaica)</p>
+        <p>scripts/check-icons.sh loads the app icon the way GNOME does, through gdk-pixbuf: the SVG at menu sizes, every PNG at the size its folder says, all under the name the desktop file asks for. CI runs it on every push, and the distro smoke tests run it on the installed icons with each distribution's own gdk-pixbuf, so an icon that a menu cannot show never reaches a release again.</p>
+        <p>The Arch smoke lane upgrades the container in full (pacman -Syu): a plain -Sy left Python 3.14.9 next to the image's older glibc, and meson could not start.</p>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-11-03">
       <description>
         <p>scripts/bump-version.sh writes a new version into the six files that carry one, with the Debian, rpm and AppStream entries generated from the CHANGELOG; scripts/check-version.sh reads them back, in CI on every push and before every publish on a tag.</p>

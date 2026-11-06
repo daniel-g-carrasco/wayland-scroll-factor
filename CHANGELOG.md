@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
-## [Unreleased]
+## [1.0.4] - 2026-11-07
 
 ### Fixed
 - Icon: the SVG app icon opened with a comment before the `<svg>` tag, and
