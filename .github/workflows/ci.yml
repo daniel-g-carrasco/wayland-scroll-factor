@@ -33,6 +33,8 @@ jobs:
             python3 \
             python3-gi \
             gir1.2-adw-1 \
+            gir1.2-gdkpixbuf-2.0 \
+            librsvg2-common \
             libgtk-4-1 \
             libadwaita-1-0 \
             desktop-file-utils \
@@ -96,6 +98,9 @@ jobs:
           # Default builds must ship NO Hyprland artifacts (opt-in module).
           test ! -e build/data/wayland-scroll-factor-hyprland.desktop
           appstreamcli validate --no-net data/io.github.danielgrasso.WaylandScrollFactor.metainfo.xml
+          # The app icon must load the way GNOME loads it (#45: a comment before
+          # the <svg> tag made gdk-pixbuf miss the format, blank icon in menus).
+          scripts/check-icons.sh
 
       - name: Build + validate the Hyprland opt-in module
         # The module is unsupported but must keep compiling; its session

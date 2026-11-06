@@ -85,6 +85,9 @@ run_case() {
       if command -v desktop-file-validate >/dev/null 2>&1; then
         desktop-file-validate /usr/share/applications/io.github.danielgrasso.WaylandScrollFactor.desktop
       fi
+      # The installed icon must load through this distribution's gdk-pixbuf
+      # (#45: GNOME menus showed a blank icon). Never skipped.
+      bash scripts/check-icons.sh /usr/share/icons
       # Hyprland is an opt-in meson feature: the default build must not
       # install any Hyprland artifacts.
       test ! -e /usr/share/wayland-sessions/wayland-scroll-factor-hyprland.desktop
@@ -102,7 +105,7 @@ run_fedora() {
   run_case \
     "fedora" \
     "docker.io/library/fedora:latest" \
-    "dnf -y --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita desktop-file-utils appstream grep"
+    "dnf -y --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita librsvg2 glycin-loaders desktop-file-utils appstream grep"
 }
 
 # Fedora Rawhide: the next GNOME, ahead of release. Adds the libinput ABI
@@ -118,35 +121,35 @@ run_rawhide() {
   run_case \
     "rawhide (next GNOME)" \
     "registry.fedoraproject.org/fedora:rawhide" \
-    "dnf -y --disablerepo=fedora-cisco-openh264 --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita desktop-file-utils appstream grep libinput binutils && dnf -q --disablerepo=fedora-cisco-openh264 info gnome-shell mutter | grep -E '^(Name|Version)' | paste - - && bash scripts/check-libinput-abi.sh"
+    "dnf -y --disablerepo=fedora-cisco-openh264 --setopt=install_weak_deps=False install gcc gcc-c++ make meson ninja-build pkgconf-pkg-config git python3 python3-gobject gtk4 libadwaita librsvg2 glycin-loaders desktop-file-utils appstream grep libinput binutils && dnf -q --disablerepo=fedora-cisco-openh264 info gnome-shell mutter | grep -E '^(Name|Version)' | paste - - && bash scripts/check-libinput-abi.sh"
 }
 
 run_ubuntu() {
   run_case \
     "ubuntu" \
     "docker.io/library/ubuntu:24.04" \
-    "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential meson ninja-build pkg-config git python3 python3-gi gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 desktop-file-utils appstream grep"
+    "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential meson ninja-build pkg-config git python3 python3-gi gir1.2-adw-1 gir1.2-gdkpixbuf-2.0 librsvg2-common libgtk-4-1 libadwaita-1-0 desktop-file-utils appstream grep"
 }
 
 run_debian() {
   run_case \
     "debian" \
     "docker.io/library/debian:stable" \
-    "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential meson ninja-build pkg-config git python3 python3-gi gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 desktop-file-utils appstream grep"
+    "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential meson ninja-build pkg-config git python3 python3-gi gir1.2-adw-1 gir1.2-gdkpixbuf-2.0 librsvg2-common libgtk-4-1 libadwaita-1-0 desktop-file-utils appstream grep"
 }
 
 run_arch() {
   run_case \
     "arch" \
     "docker.io/library/archlinux:latest" \
-    "pacman -Sy --noconfirm --needed base-devel meson ninja pkgconf git python python-gobject gtk4 libadwaita desktop-file-utils appstream grep"
+    "pacman -Syu --noconfirm --needed base-devel meson ninja pkgconf git python python-gobject gtk4 libadwaita librsvg desktop-file-utils appstream grep"
 }
 
 run_opensuse() {
   run_case \
     "opensuse" \
     "registry.opensuse.org/opensuse/tumbleweed:latest" \
-    "zypper --non-interactive install --no-recommends gcc gcc-c++ make meson ninja pkg-config git python3 python3-gobject gtk4 libadwaita-1-0 desktop-file-utils AppStream grep"
+    "zypper --non-interactive install --no-recommends gcc gcc-c++ make meson ninja pkg-config git python3 python3-gobject gtk4 libadwaita-1-0 librsvg-2-2 glycin-loaders typelib-1_0-GdkPixbuf-2_0 desktop-file-utils AppStream grep"
 }
 
 case "$target" in
