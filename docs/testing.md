@@ -38,6 +38,12 @@ scripts/test-containers.sh arch
 scripts/test-containers.sh opensuse
 ```
 
+Every lane also runs `scripts/check-icons.sh /usr/share/icons` after
+`meson install`: the app icon must load through that distribution's own
+gdk-pixbuf, SVG and PNG sizes alike, or the lane fails (#45: an SVG that
+Inkscape opened and GNOME could not). The same script runs on the source
+tree in CI and can be run locally at any time.
+
 `rawhide` is the odd one out: Fedora Rawhide carries the next GNOME long
 before anyone runs it, so that lane doubles as the compatibility check.
 It prints the GNOME version it is testing against and verifies that the

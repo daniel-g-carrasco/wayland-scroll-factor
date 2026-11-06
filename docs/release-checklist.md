@@ -28,6 +28,14 @@ mismatched package stops there. The script exists because v1.0.1 (2026-10-30)
 went out with `.deb` files called 1.0.0: the Debian changelog had been
 forgotten, and the fix needed a new tag.
 
+`scripts/check-icons.sh` loads the app icon the way GNOME does, through
+gdk-pixbuf: the SVG at menu sizes, every PNG at the size its folder says, all
+under the name the desktop file asks for. CI runs it on every push and the
+distro smoke tests run it on the installed icons. It exists because v1.0.1 to
+v1.0.3 shipped an SVG with a comment before the `<svg>` tag: Inkscape and Qt
+opened it, gdk-pixbuf did not, and GNOME menus showed a blank icon (#45).
+Looking at an icon in a launcher is not a test; this script is.
+
 ## Build
 
 ```bash

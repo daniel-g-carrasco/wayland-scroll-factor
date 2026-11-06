@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
 <!-- Wayland Scroll Factor app icon: two fingertips sliding along an arc on a touchpad.
      GNOME app icon style, 128 px canvas, Adwaita light pad, trails fading from the tail.
      The PNG sizes are rendered from this file. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
 <defs>
 <linearGradient id="light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#deddda"/></linearGradient>
 <linearGradient id="grigio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#333333"/><stop offset="1" stop-color="#1a1a1a"/></linearGradient>

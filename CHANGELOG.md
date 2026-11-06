@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by Keep a Changelog and follows Semantic Versioning for tags.
 
+## [Unreleased]
+
+### Fixed
+- Icon: the SVG app icon opened with a comment before the `<svg>` tag, and
+  gdk-pixbuf did not recognise it as an image, so GNOME menus showed a blank
+  icon (Ubuntu 26.04, Yaru). The comment now sits inside the `<svg>` element;
+  the artwork is unchanged. (#45, reported by @dradoaica)
+
+### Added
+- `scripts/check-icons.sh` loads the app icon the way GNOME does, through
+  gdk-pixbuf: the SVG at menu sizes, every PNG at the size its folder says,
+  all under the name the desktop file asks for. CI runs it on every push,
+  and the distro smoke tests run it on the installed icons with each
+  distribution's own gdk-pixbuf, so an icon that a menu cannot show never
+  reaches a release again.
+- The Arch smoke lane upgrades the container in full (`pacman -Syu`): a
+  plain `-Sy` left Python 3.14.9 next to the image's older glibc, and meson
+  could not start.
+
 ## [1.0.3] - 2026-11-03
 
 ### Added
