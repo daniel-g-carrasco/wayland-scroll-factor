@@ -25,14 +25,16 @@ jobs:
 
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
 
     steps:
+      - name: Require a stable version tag
+        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
       - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: The tag and the version files agree
         # Every package below takes its version from a file, not from the
@@ -61,6 +63,8 @@ jobs:
           if-no-files-found: error
 
       - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 

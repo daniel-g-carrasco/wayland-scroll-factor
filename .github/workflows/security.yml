@@ -1,0 +1,61 @@
+# Reuse the template's PR checks for the Python GUI and proposed commits.
+name: Security
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-analysis:
+    name: Python security rules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        shell: bash
+        run: |
+          printf '%s\n' 'ruff==0.17.5 --hash=sha256:40ca8afaac309b41a5b2e09e4e7beb1f824826b93c25697c4d74f573324fba4e' \
+            > "$RUNNER_TEMP/security-requirements.txt"
+          python -m pip install --only-binary=:all: --require-hashes -r "$RUNNER_TEMP/security-requirements.txt"
+      - name: Scan Python source
+        run: >-
+          ruff check --isolated --no-fix --no-cache --output-format github
+          --select S102,S108,S201,S202,S301,S302,S303,S304,S305,S306,S307,S312,S313,S315,S316,S317,S318,S319,S321,S323,S501,S502,S503,S506,S507,S508,S509,S602,S604,S605,S606,S609
+          gui
+
+  secrets:
+    name: Secrets in PR commits
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan PR commits with Gitleaks
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            --output "$archive"
+          printf '%s  %s\n' '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
+
+          # Use the Git object database so the PR cannot supply scanner config or an ignore file.
+          git cat-file -e "$BASE_SHA^{commit}"
+          git cat-file -e "$HEAD_SHA^{commit}"
+          cd "$(git rev-parse --absolute-git-dir)"
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact=100 --ignore-gitleaks-allow --verbose \
+            --log-opts="--full-history --diff-merges=first-parent $BASE_SHA..$HEAD_SHA" .

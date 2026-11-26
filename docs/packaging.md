@@ -40,6 +40,13 @@ sponsorship review process.
 
 ## Local Package Tests
 
+The RPM and Debian package tests run on pull requests and weekly. They
+build and install the native packages in containers with current distro
+dependencies. GitHub releases include SHA-256 sums, Debian build metadata
+and the source RPM. The packages use the distro's libinput, GTK,
+libadwaita and PyGObject, so their security updates come through the
+package manager.
+
 Use Podman from the repository root:
 
 ```bash
